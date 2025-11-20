@@ -8,9 +8,9 @@
 
 int main()
 {
-    // creating socket
     int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-
+    // creating socket
+    
     // specifying address
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
@@ -22,11 +22,18 @@ int main()
             sizeof(serverAddress));
 
     // sending data
-    const char* message = "Hello, server!";
-    send(clientSocket, message, strlen(message), 0);
+    std::string line;
+    while (true)
+    {
+        std::cout << "> ";
+        std::getline(std::cin, line);
 
-    // closing socket
+        if (line == "exit" || std::cin.eof())
+            break;
+
+        send(clientSocket, line.c_str(), line.size(), 0);
+    }
+
     close(clientSocket);
-
     return 0;
 }
