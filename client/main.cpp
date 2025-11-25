@@ -1,5 +1,7 @@
 // C++ program to illustrate the client application in the
 // socket programming
+
+#include "../includes/Client.hpp"
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
@@ -8,8 +10,8 @@
 
 int main()
 {
-    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     // creating socket
+    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     
     // specifying address
     sockaddr_in serverAddress;
