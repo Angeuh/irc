@@ -4,7 +4,7 @@
 #include "../includes/Server.hpp"
 
 
-int main() {
+/* int main() {
     // Create listening socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -70,5 +70,12 @@ int main() {
     }
 
     close(serverSocket);
+    return 0;
+} */
+
+int main(void)
+{
+    Server server(8080);
+    server.run();
     return 0;
 }

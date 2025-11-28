@@ -20,7 +20,7 @@ class Client
         Client();
         ~Client();
         Client(const std::string& host, int port);
-        void sendMessage(const std::string& msg);
+        int sendMessage(const std::string &msg);
         void run(); // optional: read from server
 };
 #endif

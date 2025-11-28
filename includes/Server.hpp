@@ -14,11 +14,11 @@ class Server
     private:
         int serverSocket;
         std::vector<pollfd> fds;
-        void acceptNewClient();
-        void handleClientMessage(size_t index);
+        int     acceptNewClient();
+        int     handleClientMessage(size_t index);
 
     public:
-    Server();
+        Server();
         ~Server();
         Server(int port);
         void run(); // to start the server, somehow ?

@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
+/* 
 int main()
 {
     // creating socket
@@ -37,5 +37,12 @@ int main()
     }
 
     close(clientSocket);
+    return 0;
+} */
+
+int main(void)
+{
+    Client client("user1", 8080);
+    client.run();
     return 0;
 }
