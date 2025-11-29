@@ -13,6 +13,7 @@ class ClientConnection
         std::string username;     // who they are
         std::string readBuffer;   // partial incoming data
         std::string writeBuffer;  // queued outgoing data
+        std::string name;         // real name used in irssi
         bool loggedIn = false;  
 };
 
