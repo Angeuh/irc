@@ -59,21 +59,32 @@ int Server::acceptNewClient()
     return clientSocket;
 }
 
-int Server::handleClientMessage(size_t index)
+static int  joinChannel(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd, std::vector<pollfd> &fds)
 {
-    int otherFd;
-    int fd = fds[index].fd;
-    char buffer[2048];
-    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-    buffer[bytesReceived] = '\0';
-    if (bytesReceived <= 0)
+    int bytesReceived = msg.size();
+    std::string channel = msg.substr(5);
+
+    clients[fd].currentChannel = channel;
+    std::string joinMsg = ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
+    for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        close(fd);
-        clients.erase(fd);
-        fds.erase(fds.begin() + index);
-        return -1;
+        ClientConnection &c = clients[fd] = it->second;
+        if (c.currentChannel == channel)
+        {
+            c.writeBuffer += joinMsg;
+            for (std::vector<pollfd>::iterator pIt = fds.begin(); pIt != fds.end(); ++pIt)
+                if (pIt->fd == c.fd)
+                    pIt->events |= POLLOUT;
+        }
     }
-    std::string msg(buffer, bytesReceived);
+    return bytesReceived;
+}
+
+static int  connectionIrssi(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd, std::vector<pollfd> &fds)
+{
+    int bytesReceived = msg.size();
     if (msg.rfind("NICK ", 0) == 0)
     {
         clients[fd].username = msg.substr(5);
@@ -104,25 +115,50 @@ int Server::handleClientMessage(size_t index)
 		}
         return bytesReceived;
     }
+    return 0;
+}
+
+static void  broadcastingMessage(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd, std::vector<pollfd> &fds)
+{
     ClientConnection &sender = clients[fd];
     std::string ircMsg =
-        ":" + sender.username + "!user@localhost PRIVMSG #channel :" +
-            msg + "\r\n";
+        ":" + sender.username + "!user@localhost PRIVMSG " +
+        sender.currentChannel + " :" + msg + "\r\n";
 	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
-	{
-		std::pair<const int, ClientConnection> &pair = *it;
-        std::cout << "test :" << ircMsg;
-        otherFd = pair.first;
-		if (ircMsg.empty() || ircMsg[ircMsg.size() - 1] != '\n')
-			ircMsg += "\r\n";
-        clients[otherFd].writeBuffer += ircMsg;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == otherFd)
-				p.events |= POLLOUT;
-		}
+    {
+        ClientConnection &client = it->second;
+        if (client.currentChannel == sender.currentChannel)
+        {
+            client.writeBuffer += ircMsg;
+            for (std::vector<pollfd>::iterator pIt = fds.begin(); pIt != fds.end(); ++pIt)
+                if (pIt->fd == client.fd)
+                    pIt->events |= POLLOUT;
+        }
     }
+    std::cout << "Broadcast from " << sender.username 
+          << " to channel " << sender.currentChannel << std::endl;
+}
+
+int Server::handleClientMessage(size_t index)
+{
+    int fd = fds[index].fd;
+    char buffer[2048];
+    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+    buffer[bytesReceived] = '\0';
+    if (bytesReceived <= 0)
+    {
+        close(fd);
+        clients.erase(fd);
+        fds.erase(fds.begin() + index);
+        return -1;
+    }
+    std::string msg(buffer, bytesReceived);
+    if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
+        return bytesReceived;
+    if (msg.rfind("JOIN ", 0) == 0)
+        return joinChannel(clients, msg, fd, fds);
+    broadcastingMessage(clients, msg, fd, fds);
     return bytesReceived;
 }
 
@@ -147,19 +183,16 @@ void    Server::run()
         for (size_t i = 0; i < fds.size(); i++)
         {
             if (fds[i].fd == serverSocket && (fds[i].revents & POLLIN))
-            {
                 acceptNewClient();
-            }
             else if (fds[i].revents & POLLIN)
-            {
                 handleClientMessage(i);
-            }
             else if (fds[i].revents & POLLOUT)
             {
                 int fd = fds[i].fd;
 				ClientConnection &client = clients[fd];
                 if (!client.writeBuffer.empty())
                 {
+                    std::cout << "Sending to " << fd << ": " << client.writeBuffer;
                     int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);
 
                     if (sent > 0)
