@@ -19,7 +19,8 @@ Server::Server(int port)
         std::cerr << "Socket creation failed" << std::endl;
         return;
     }
-    sockaddr_in serverAddr{};
+    sockaddr_in serverAddr;
+    memset(&serverAddr, 0, sizeof(sockaddr_in));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
@@ -38,19 +39,22 @@ Server::Server(int port)
 
 int Server::acceptNewClient()
 {
-    int clientSocket = accept(serverSocket, nullptr, nullptr);
+    int clientSocket = accept(serverSocket, NULL, NULL);
     if (clientSocket < 0)
     {
         std::cerr << "Accept failed" << std::endl;
         return -1;
     }
-    pollfd pfd{};
+    pollfd pfd;
+    memset(&pfd, 0, sizeof(pollfd));
     pfd.fd = clientSocket;
     pfd.events = POLLIN;
     fds.push_back(pfd);
-    clients.emplace(clientSocket, ClientConnection{});
+    clients.insert(std::make_pair(clientSocket, ClientConnection()));
     clients[clientSocket].fd = clientSocket;
-    clients[clientSocket].username = "user" + std::to_string(clientSocket);
+	std::ostringstream ss;
+	ss << "user" << clientSocket;
+	clients[clientSocket].username = ss.str();
     std::cout << "New client connected: " << clientSocket << std::endl;
     return clientSocket;
 }
@@ -75,9 +79,12 @@ int Server::handleClientMessage(size_t index)
         clients[fd].username = msg.substr(5);
         std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
         clients[fd].writeBuffer += welcome;
-        for (pollfd &p : fds)
-            if (p.fd == fd)
-                p.events |= POLLOUT;
+		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
+		{
+			pollfd &p = *it;
+			if (p.fd == fd)
+				p.events |= POLLOUT;
+		}
         return bytesReceived;
     }
 
@@ -89,28 +96,32 @@ int Server::handleClientMessage(size_t index)
     {
         std::string reply = ":server CAP * LS :\r\n";
         clients[fd].writeBuffer += reply;
-        for (pollfd &p : fds)
-            if (p.fd == fd)
-                p.events |= POLLOUT;
-
+		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
+		{
+			pollfd &p = *it;
+			if (p.fd == fd)
+				p.events |= POLLOUT;
+		}
         return bytesReceived;
     }
     ClientConnection &sender = clients[fd];
     std::string ircMsg =
         ":" + sender.username + "!user@localhost PRIVMSG #channel :" +
             msg + "\r\n";
-    for (std::pair<const int, ClientConnection> &pair : clients)
-    {
+	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+	{
+		std::pair<const int, ClientConnection> &pair = *it;
         std::cout << "test :" << ircMsg;
         otherFd = pair.first;
-        if (ircMsg.back() != '\n')
-            ircMsg += "\r\n";
+		if (ircMsg.empty() || ircMsg[ircMsg.size() - 1] != '\n')
+			ircMsg += "\r\n";
         clients[otherFd].writeBuffer += ircMsg;
-        for (pollfd &p : fds)
-        {
-            if (p.fd == otherFd)
-                p.events |= POLLOUT;
-        }
+		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
+		{
+			pollfd &p = *it;
+			if (p.fd == otherFd)
+				p.events |= POLLOUT;
+		}
     }
     return bytesReceived;
 }
@@ -118,7 +129,8 @@ int Server::handleClientMessage(size_t index)
 void    Server::run()
 {
     // Add listening socket to poll list
-    pollfd listenPoll{};
+    pollfd listenPoll;
+    memset(&listenPoll, 0, sizeof(pollfd));
     listenPoll.fd = serverSocket;
     listenPoll.events = POLLIN;
     fds.push_back(listenPoll);
@@ -145,7 +157,7 @@ void    Server::run()
             else if (fds[i].revents & POLLOUT)
             {
                 int fd = fds[i].fd;
-                auto &client = clients[fd];
+				ClientConnection &client = clients[fd];
                 if (!client.writeBuffer.empty())
                 {
                     int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);

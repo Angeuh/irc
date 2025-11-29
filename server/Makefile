@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: llarrey <llarrey@student.42.fr>            +#+  +:+       +#+         #
+#    By: sconiat <sconiat@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/17 14:54:45 by sconiat           #+#    #+#              #
-#    Updated: 2025/11/26 17:37:24 by llarrey          ###   ########.fr        #
+#    Updated: 2025/11/29 16:39:40 by sconiat          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,11 +15,11 @@ CXXFLAGS	= -Wall -Werror -Wextra -g3 -std=c++98 -MMD
 
 NAME		= SERVER
 
-SRC_DIR		= server
+SRC_DIR		= .
 OBJ_DIR 	= obj
 INC_DIR 	= ../includes/
 
-SRC			= Server.cpp main.cpp
+SRC			= Server.cpp main.cpp ClientConnection.cpp
 SRC			:= $(addprefix $(SRC_DIR)/, $(SRC))
 
 OBJ			= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

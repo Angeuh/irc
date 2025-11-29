@@ -8,7 +8,7 @@
 # include <vector>
 # include <poll.h>
 # include <map>
-# include <unordered_map>
+# include <sstream>
 # include "ClientConnection.hpp"
 # include "Client.hpp"
 
@@ -18,7 +18,7 @@ class Server
     private:
         int serverSocket;
         std::vector<pollfd> fds;
-        std::unordered_map<int, ClientConnection> clients;
+        std::map<int, ClientConnection> clients;
         int     acceptNewClient();
         int     handleClientMessage(size_t index);
 
