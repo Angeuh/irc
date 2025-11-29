@@ -61,7 +61,7 @@ int Server::handleClientMessage(size_t index)
     int fd = fds[index].fd;
     char buffer[2048];
     int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-
+    buffer[bytesReceived] = '\0';
     if (bytesReceived <= 0)
     {
         close(fd);
@@ -69,18 +69,44 @@ int Server::handleClientMessage(size_t index)
         fds.erase(fds.begin() + index);
         return -1;
     }
-    ClientConnection &sender = clients[fd];
+    std::string msg(buffer, bytesReceived);
+    if (msg.rfind("NICK ", 0) == 0)
+    {
+        clients[fd].username = msg.substr(5);
+        std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
+        clients[fd].writeBuffer += welcome;
+        for (pollfd &p : fds)
+            if (p.fd == fd)
+                p.events |= POLLOUT;
+        return bytesReceived;
+    }
 
+    if (msg.rfind("USER ", 0) == 0) {
+        clients[fd].username = msg.substr(msg.find(":") + 1);
+        return bytesReceived;
+    }
+    if (msg.find("CAP LS") == 0)
+    {
+        std::string reply = ":server CAP * LS :\r\n";
+        clients[fd].writeBuffer += reply;
+        for (pollfd &p : fds)
+            if (p.fd == fd)
+                p.events |= POLLOUT;
+
+        return bytesReceived;
+    }
+    ClientConnection &sender = clients[fd];
     std::string ircMsg =
         ":" + sender.username + "!user@localhost PRIVMSG #channel :" +
-            std::string(buffer) + "\r\n";    for (auto &pair : clients)
+            msg + "\r\n";
+    for (std::pair<const int, ClientConnection> &pair : clients)
     {
         std::cout << "test :" << ircMsg;
         otherFd = pair.first;
         if (ircMsg.back() != '\n')
             ircMsg += "\r\n";
         clients[otherFd].writeBuffer += ircMsg;
-        for (auto &p : fds)
+        for (pollfd &p : fds)
         {
             if (p.fd == otherFd)
                 p.events |= POLLOUT;
