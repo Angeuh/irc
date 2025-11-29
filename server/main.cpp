@@ -73,8 +73,10 @@
     return 0;
 } */
 
-int main(void)
+int main(int ac, char *av[])
 {
+    (void)ac;
+    (void)av;
     Server server(8080);
     server.run();
     return 0;

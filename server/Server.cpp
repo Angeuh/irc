@@ -48,24 +48,44 @@ int Server::acceptNewClient()
     pfd.fd = clientSocket;
     pfd.events = POLLIN;
     fds.push_back(pfd);
+    clients.emplace(clientSocket, ClientConnection{});
+    clients[clientSocket].fd = clientSocket;
+    clients[clientSocket].username = "user" + std::to_string(clientSocket);
     std::cout << "New client connected: " << clientSocket << std::endl;
     return clientSocket;
 }
 
 int Server::handleClientMessage(size_t index)
 {
+    int otherFd;
+    int fd = fds[index].fd;
     char buffer[2048];
-    memset(buffer, 0, sizeof(buffer));
-    int bytesReceived = recv(fds[index].fd, buffer, sizeof(buffer), 0);
+    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+
     if (bytesReceived <= 0)
     {
-        std::cout << "Client " << fds[index].fd << " disconnected." <<
-        std::endl;
-        close(fds[index].fd);
+        close(fd);
+        clients.erase(fd);
         fds.erase(fds.begin() + index);
         return -1;
     }
-    std::cout << "Client " << fds[index].fd << ": " << buffer << std::endl;
+    ClientConnection &sender = clients[fd];
+
+    std::string ircMsg =
+        ":" + sender.username + "!user@localhost PRIVMSG #channel :" +
+            std::string(buffer) + "\r\n";    for (auto &pair : clients)
+    {
+        std::cout << "test :" << ircMsg;
+        otherFd = pair.first;
+        if (ircMsg.back() != '\n')
+            ircMsg += "\r\n";
+        clients[otherFd].writeBuffer += ircMsg;
+        for (auto &p : fds)
+        {
+            if (p.fd == otherFd)
+                p.events |= POLLOUT;
+        }
+    }
     return bytesReceived;
 }
 
@@ -95,6 +115,21 @@ void    Server::run()
             else if (fds[i].revents & POLLIN)
             {
                 handleClientMessage(i);
+            }
+            else if (fds[i].revents & POLLOUT)
+            {
+                int fd = fds[i].fd;
+                auto &client = clients[fd];
+                if (!client.writeBuffer.empty())
+                {
+                    int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);
+
+                    if (sent > 0)
+                        client.writeBuffer.erase(0, sent);
+                    if (client.writeBuffer.empty()) {
+                        fds[i].events &= ~POLLOUT;
+                    }
+                }
             }
         }
     }
