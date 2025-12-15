@@ -55,21 +55,51 @@ int Server::acceptNewClient()
 	std::ostringstream ss;
 	ss << "user" << clientSocket;
 	clients[clientSocket].username = ss.str();
+    std::string defaultNick = clients[clientSocket].username;
+    std::string welcome = ":server 001 " + defaultNick + " :Welcome to IRC\r\n";
+    clients[clientSocket].writeBuffer += welcome;
     std::cout << "New client connected: " << clientSocket << std::endl;
     return clientSocket;
 }
 
-static int  joinChannel(std::map<int, ClientConnection> &clients,
+static std::string trimCRLF(const std::string &s)
+{
+    size_t start = 0;
+    size_t end = s.size();
+
+    while (start < end && (s[start] == '\r' || s[start] == '\n'))
+        start++;
+    while (end > start && (s[end - 1] == '\r' || s[end - 1] == '\n'))
+        end--;
+
+    return s.substr(start, end - start);
+}
+
+static int joinChannel(std::map<int, ClientConnection> &clients,
     std::string &msg, int fd, std::vector<pollfd> &fds)
 {
     int bytesReceived = msg.size();
-    std::string channel = msg.substr(5);
 
+    // Extract channel name
+    std::string channel = trimCRLF(msg.substr(5));
+
+    if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
+    {
+        return -1;
+    }
+
+
+    std::cout << "[JOIN] fd=" << fd 
+          << " requested channel: '" << msg << "'\n";
+    std::cout << "[JOIN] normalized as: '" << channel << "'\n";
+    if (channel.empty() || channel[0] != '#')
+        channel = "#" + channel;
     clients[fd].currentChannel = channel;
-    std::string joinMsg = ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
+    std::string joinMsg =
+        ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
     for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        ClientConnection &c = clients[fd] = it->second;
+        ClientConnection &c = it->second;
         if (c.currentChannel == channel)
         {
             c.writeBuffer += joinMsg;
@@ -81,13 +111,18 @@ static int  joinChannel(std::map<int, ClientConnection> &clients,
     return bytesReceived;
 }
 
+
 static int  connectionIrssi(std::map<int, ClientConnection> &clients,
     std::string &msg, int fd, std::vector<pollfd> &fds)
 {
     int bytesReceived = msg.size();
     if (msg.rfind("NICK ", 0) == 0)
     {
-        clients[fd].username = msg.substr(5);
+        std::string nick = msg.substr(5);
+       while (!nick.empty() &&
+       (nick[nick.size() - 1] == '\r' || nick[nick.size() - 1] == '\n'))
+            nick.erase(nick.size() - 1);
+        clients[fd].username = nick;
         std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
         clients[fd].writeBuffer += welcome;
 		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
@@ -99,10 +134,13 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
         return bytesReceived;
     }
 
-    if (msg.rfind("USER ", 0) == 0) {
-        clients[fd].username = msg.substr(msg.find(":") + 1);
-        return bytesReceived;
-    }
+    if (msg.rfind("USER ", 0) == 0)
+{
+    size_t size = msg.find(":");
+    if (size != std::string::npos)
+        clients[fd].name = msg.substr(size + 1);
+    return bytesReceived;
+}
     if (msg.find("CAP LS") == 0)
     {
         std::string reply = ":server CAP * LS :\r\n";
@@ -118,34 +156,50 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
     return 0;
 }
 
-static void  broadcastingMessage(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::vector<pollfd> &fds)
+static void broadcastingMessage(std::map<int, ClientConnection> &clients,
+                                const std::string &content,
+                                int fd,
+                                std::vector<pollfd> &fds)
 {
     ClientConnection &sender = clients[fd];
     std::string ircMsg =
         ":" + sender.username + "!user@localhost PRIVMSG " +
-        sender.currentChannel + " :" + msg + "\r\n";
-	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+        sender.currentChannel + " :" + content + "\r\n";
+
+    std::map<int, ClientConnection>::iterator it = clients.begin();
+    for (; it != clients.end(); ++it)
     {
         ClientConnection &client = it->second;
-        if (client.currentChannel == sender.currentChannel)
+
+        if (client.currentChannel == sender.currentChannel &&
+            client.fd != fd)
         {
             client.writeBuffer += ircMsg;
-            for (std::vector<pollfd>::iterator pIt = fds.begin(); pIt != fds.end(); ++pIt)
-                if (pIt->fd == client.fd)
-                    pIt->events |= POLLOUT;
+            std::vector<pollfd>::iterator pit = fds.begin();
+            for (; pit != fds.end(); ++pit)
+            {
+                if (pit->fd == client.fd)
+                {
+                    pit->events |= POLLOUT;
+                }
+            }
         }
+        std::cout << "[BROADCAST] sender=" << sender.username
+          << " fd=" << fd
+          << " channel='" << sender.currentChannel
+          << "' msg='" << content << "'\n";
     }
-    std::cout << "Broadcast from " << sender.username 
-          << " to channel " << sender.currentChannel << std::endl;
+
+    std::cout << "Broadcast OK: " << ircMsg;
 }
+
+
 
 int Server::handleClientMessage(size_t index)
 {
     int fd = fds[index].fd;
     char buffer[2048];
     int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-    buffer[bytesReceived] = '\0';
     if (bytesReceived <= 0)
     {
         close(fd);
@@ -154,11 +208,31 @@ int Server::handleClientMessage(size_t index)
         return -1;
     }
     std::string msg(buffer, bytesReceived);
+    msg = trimCRLF(msg);
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
         return bytesReceived;
     if (msg.rfind("JOIN ", 0) == 0)
         return joinChannel(clients, msg, fd, fds);
-    broadcastingMessage(clients, msg, fd, fds);
+    if (msg.rfind("PRIVMSG ", 0) == 0) 
+    {
+        size_t colon = msg.find(" :");
+        if (colon != std::string::npos)
+        {
+            std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error
+            broadcastingMessage(clients, content, fd, fds);
+        }
+    }
+        // Log raw incoming data
+    std::cout << "\n--- RAW MESSAGE RECEIVED FROM FD " 
+            << fd << " ---\n";
+    for (int i = 0; i < bytesReceived; i++)
+    {
+        unsigned char c = buffer[i];
+        if (c == '\r') std::cout << "\\r";
+        else if (c == '\n') std::cout << "\\n";
+        else std::cout << c;
+    }
+    std::cout << "\n-------------------------------------\n\n";
     return bytesReceived;
 }
 
