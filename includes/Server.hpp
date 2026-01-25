@@ -2,8 +2,10 @@
 # define SERVER_HPP
 # include <cstring>
 # include <iostream>
+# include <cstdlib>
 # include <netinet/in.h>
 # include <sys/socket.h>
+# include <arpa/inet.h>
 # include <unistd.h>
 # include <vector>
 # include <poll.h>
@@ -27,6 +29,11 @@ class Server
         ~Server();
         Server(int port);
         void run(); // to start the server, somehow ?
+
+    class PollError : public std::exception {
+            public:
+                const char* what() const throw();
+            };
 };
 
 #endif

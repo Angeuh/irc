@@ -73,11 +73,41 @@
     return 0;
 } */
 
+int checkArguments(int ac, char *av[], int socket)
+{
+    if (ac != 3)
+    {
+        std::cerr << "Server connection requires a port number and password, only those two" << std::endl;
+        return 1;
+    }
+    if (socket <= 0 || socket >= 65536)
+    {
+        std::cerr << "Port doesn't exist" << std::endl;
+        return 1;
+    }
+    if (!av[2] || strcmp(av[2], "123") != 0)
+    {
+        std::cerr << "Wrong password" << std::endl;
+        return 1;
+    }
+    return 0;
+}
+
 int main(int ac, char *av[])
 {
-    (void)ac;
-    (void)av;
-    Server server(8080);
-    server.run();
+    int socket = std::atoi(av[1]);
+    if (checkArguments(ac, av, socket) != 0)
+        return 1;
+    try
+    {
+        Server server(socket);
+        server.run();
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Server failed to start: " << e.what() << std::endl;
+        return 1;
+    }
+
     return 0;
 }

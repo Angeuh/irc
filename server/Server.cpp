@@ -16,8 +16,7 @@ Server::Server(int port)
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
     {
-        std::cerr << "Socket creation failed" << std::endl;
-        return;
+        throw std::runtime_error("Socket creation failed");
     }
     sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(sockaddr_in));
@@ -26,15 +25,18 @@ Server::Server(int port)
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
-        std::cerr << "Bind failed" << std::endl;
-        return;
+        throw std::runtime_error("Bind failed");
     }
     if (listen(serverSocket, 5) < 0)
     {
-        std::cerr << "Listen failed" << std::endl;
-        return;
+        throw std::runtime_error("Listen failed");
     }
     std::cout << "Server listening on port " << port << std::endl;
+}
+
+char const *Server::PollError::what() const throw()
+{
+    return "Poll failed";
 }
 
 int Server::acceptNewClient()
@@ -56,6 +58,7 @@ int Server::acceptNewClient()
 	ss << "user" << clientSocket;
 	clients[clientSocket].username = ss.str();
     std::string defaultNick = clients[clientSocket].username;
+    //clients[clientSocket].fd = inet_ntoa(clients.sin_addr);
     std::string welcome = ":server 001 " + defaultNick + " :Welcome to IRC\r\n";
     clients[clientSocket].writeBuffer += welcome;
     std::cout << "New client connected: " << clientSocket << std::endl;
@@ -72,7 +75,7 @@ static std::string trimCRLF(const std::string &s)
     while (end > start && (s[end - 1] == '\r' || s[end - 1] == '\n'))
         end--;
 
-    return s.substr(start, end - start);
+    return (s.substr(start, end - start));
 }
 
 static int joinChannel(std::map<int, ClientConnection> &clients,
@@ -82,13 +85,9 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
 
     // Extract channel name
     std::string channel = trimCRLF(msg.substr(5));
-
+    std::cout << "Requested to join channel: '" << channel << "'\n";
     if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
-    {
         return -1;
-    }
-
-
     std::cout << "[JOIN] fd=" << fd 
           << " requested channel: '" << msg << "'\n";
     std::cout << "[JOIN] normalized as: '" << channel << "'\n";
@@ -209,20 +208,21 @@ int Server::handleClientMessage(size_t index)
     }
     std::string msg(buffer, bytesReceived);
     msg = trimCRLF(msg);
+    std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
         return bytesReceived;
     if (msg.rfind("JOIN ", 0) == 0)
         return joinChannel(clients, msg, fd, fds);
-    if (msg.rfind("PRIVMSG ", 0) == 0) 
+    if (msg.rfind("PRIVMSG ", 0) == 0)
     {
         size_t colon = msg.find(" :");
         if (colon != std::string::npos)
         {
-            std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error
+            std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error, i didnt' trim there before (resolved)
             broadcastingMessage(clients, content, fd, fds);
         }
     }
-        // Log raw incoming data
+    // Log raw incoming data, for test only, but i'll keep it for push, always useful
     std::cout << "\n--- RAW MESSAGE RECEIVED FROM FD " 
             << fd << " ---\n";
     for (int i = 0; i < bytesReceived; i++)
@@ -250,8 +250,7 @@ void    Server::run()
         int ret = poll(fds.data(), fds.size(), -1);
         if (ret < 0)
         {
-            std::cerr << "Poll failed" << std::endl;
-            continue;
+            throw PollError();
         }
 
         for (size_t i = 0; i < fds.size(); i++)
