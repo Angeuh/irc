@@ -79,7 +79,8 @@ static std::string trimCRLF(const std::string &s)
 }
 
 static int joinChannel(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::vector<pollfd> &fds)
+    std::string &msg, int fd, std::vector<pollfd> &fds,
+	std::map<std::string, Channel> &channels)
 {
     int bytesReceived = msg.size();
 
@@ -107,6 +108,10 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
                     pIt->events |= POLLOUT;
         }
     }
+	if (channels.find(channel) == channels.end())
+		channels[channel] = Channel(channel, fd);
+	else
+		channels[channel].insertUser(fd);
     return bytesReceived;
 }
 
@@ -155,14 +160,56 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
     return 0;
 }
 
-static void broadcastingMessage(std::map<int, ClientConnection> &clients,
-                                const std::string &content,
-                                int fd,
-                                std::vector<pollfd> &fds)
+static std::string getTrailingParam(const std::string &msg)
 {
+    size_t pos = msg.find(':');
+    if (pos == std::string::npos)
+        return "";
+    return (msg.substr(pos + 1));
+}
+
+static int  operatorCommand(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd, std::map<std::string, Channel> &channels,
+	std::vector<pollfd> &fds)
+{
+	std::string	parameters = getTrailingParam(msg);
+	int			bytesReceived = msg.size();
+	Channel		channel = channels[clients[fd].currentChannel];
+
+	if (msg.rfind("KICK ", 0) == 0)
+	{
+		channel.kickCmd(parameters);
+		return (bytesReceived);
+	}
+	if (msg.rfind("INVITE ", 0) == 0)
+	{
+		channel.inviteCmd(parameters);
+		return (bytesReceived);
+	}
+	if (msg.rfind("TOPIC ", 0) == 0)
+	{
+		channel.topicCmd(parameters, channel, clients, fd, fds);
+		return (bytesReceived);
+	}
+	if (msg.rfind("MODE ", 0) == 0)
+	{
+		channel.modeCmd(parameters);
+		return (bytesReceived);
+	}
+	return (0);
+}
+
+void broadcastingMessage(std::map<int, ClientConnection> &clients,
+                                const std::string &content,
+								const std::string &command,
+                                int fd,
+                                std::vector<pollfd> &fds
+							)
+{
+	bool skipSender = (command == "PRIVMSG");
     ClientConnection &sender = clients[fd];
     std::string ircMsg =
-        ":" + sender.username + "!user@localhost PRIVMSG " +
+        ":" + sender.username + "!user@localhost " + command + " " +
         sender.currentChannel + " :" + content + "\r\n";
 
     std::map<int, ClientConnection>::iterator it = clients.begin();
@@ -171,16 +218,14 @@ static void broadcastingMessage(std::map<int, ClientConnection> &clients,
         ClientConnection &client = it->second;
 
         if (client.currentChannel == sender.currentChannel &&
-            client.fd != fd)
+            (!skipSender || client.fd != fd))
         {
             client.writeBuffer += ircMsg;
             std::vector<pollfd>::iterator pit = fds.begin();
             for (; pit != fds.end(); ++pit)
             {
                 if (pit->fd == client.fd)
-                {
                     pit->events |= POLLOUT;
-                }
             }
         }
         std::cout << "[BROADCAST] sender=" << sender.username
@@ -191,8 +236,6 @@ static void broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     std::cout << "Broadcast OK: " << ircMsg;
 }
-
-
 
 int Server::handleClientMessage(size_t index)
 {
@@ -211,15 +254,18 @@ int Server::handleClientMessage(size_t index)
     std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
         return bytesReceived;
-    if (msg.rfind("JOIN ", 0) == 0)
-        return joinChannel(clients, msg, fd, fds);
+    if (msg.rfind("JOIN ", 0) == 0) {
+        return joinChannel(clients, msg, fd, fds, channels);
+	}
+	if (operatorCommand(clients, msg, fd, channels, fds) == bytesReceived)
+		return bytesReceived;
     if (msg.rfind("PRIVMSG ", 0) == 0)
     {
         size_t colon = msg.find(" :");
         if (colon != std::string::npos)
         {
             std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error, i didnt' trim there before (resolved)
-            broadcastingMessage(clients, content, fd, fds);
+            broadcastingMessage(clients, content, "PRIVMSG", fd, fds);
         }
     }
     // Log raw incoming data, for test only, but i'll keep it for push, always useful

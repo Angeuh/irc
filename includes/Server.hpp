@@ -13,6 +13,9 @@
 # include <sstream>
 # include "ClientConnection.hpp"
 # include "Client.hpp"
+# include "Channel.hpp"
+
+class Channel;
 
 class Server
 {
@@ -21,6 +24,7 @@ class Server
         int serverSocket;
         std::vector<pollfd> fds;
         std::map<int, ClientConnection> clients;
+		std::map<std::string, Channel> channels;
         int     acceptNewClient();
         int     handleClientMessage(size_t index);
 
@@ -35,5 +39,11 @@ class Server
                 const char* what() const throw();
             };
 };
+
+void broadcastingMessage(std::map<int, ClientConnection> &clients,
+                                const std::string &content,
+								const std::string &command,
+                                int fd,
+                                std::vector<pollfd> &fds);
 
 #endif
