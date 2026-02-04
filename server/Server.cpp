@@ -199,6 +199,26 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 	return (0);
 }
 
+// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
+// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
+// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
+
+void sendingMessage(ClientConnection &client, const std::string &content, std::vector<pollfd> &fds)
+{
+    client.writeBuffer += content;
+    std::vector<pollfd>::iterator pit = fds.begin();
+    for (; pit != fds.end(); ++pit)
+    {
+    	if (pit->fd == client.fd)
+			break;
+	}
+	pit->events |= POLLOUT;
+    std::cout << "[RPL/ERR] client=" << client.username
+        << " channel='" << client.currentChannel
+        << "' msg='" << content << "'\n";
+    std::cout << "RPL/ERR OK: " << content;
+}
+
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
