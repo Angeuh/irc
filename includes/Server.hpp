@@ -14,17 +14,18 @@
 # include "ClientConnection.hpp"
 # include "Client.hpp"
 # include "Channel.hpp"
+# define SERVERNAME "myServer"
 
 class Channel;
 
 class Server
 {
-
     private:
-        int serverSocket;
-        std::vector<pollfd> fds;
-        std::map<int, ClientConnection> clients;
-		std::map<std::string, Channel> channels;
+        int								serverSocket;
+        std::vector<pollfd>				fds;
+        std::map<int, ClientConnection>	clients;
+		std::map<std::string, Channel>	channels;
+	
         int     acceptNewClient();
         int     handleClientMessage(size_t index);
 
@@ -45,5 +46,8 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
 								const std::string &command,
                                 int fd,
                                 std::vector<pollfd> &fds);
+
+
+void sendingMessage(ClientConnection &client, const std::string &content, std::vector<pollfd> &fds);
 
 #endif
