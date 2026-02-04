@@ -14,9 +14,11 @@
 # include "ClientConnection.hpp"
 # include "Client.hpp"
 # include "Channel.hpp"
-# define SERVERNAME "myServer"
+# define SERVERNAME "localhost"
 
 class Channel;
+
+// /connect DALNET + /RAWLOG OPEN debug.log for debug logs on official server
 
 class Server
 {

@@ -21,12 +21,12 @@ class Channel
         std::set<int>	users;
         std::set<int>	operators;
 
-		std::string	rplNoTopic(const std::string &command);
-		std::string	rplTopic(const std::string &command);
+		std::string	rplNoTopic(const std::string &, const std::string &);
+		std::string	rplTopic(const std::string &, const std::string &,  const std::string &);
 
 		std::string	errNeedMoreParams(const std::string &command);
 		std::string	errNotOnChannel(const std::string &command);
-		std::string	errChanOpPrivsNeeded(const std::string &command);
+		std::string	errChanOpPrivsNeeded(const std::string &, const std::string &);
 		std::string	errNoChanModes(const std::string &command);
 
     public:
@@ -40,7 +40,7 @@ class Channel
 
 		int		kickCmd( std::string & );
 		int		inviteCmd( std::string & );
-		int		topicCmd( std::string &, Channel &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		topicCmd( std::string &, bool, Channel &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
 		int		modeCmd( std::string & );
 };
 

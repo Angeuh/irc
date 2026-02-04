@@ -6,7 +6,7 @@
 #    By: sconiat <sconiat@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/17 14:54:45 by sconiat           #+#    #+#              #
-#    Updated: 2026/02/03 13:49:53 by sconiat          ###   ########.fr        #
+#    Updated: 2026/02/04 18:03:36 by sconiat          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -42,6 +42,7 @@ clean:
 
 fclean: clean
 	rm -f $(NAME)
+	rm -f *.log
 
 re: fclean all
 

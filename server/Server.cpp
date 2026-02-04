@@ -163,9 +163,12 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
 static std::string getTrailingParam(const std::string &msg)
 {
     size_t pos = msg.find(':');
-    if (pos == std::string::npos)
-        return "";
     return (msg.substr(pos + 1));
+}
+
+static bool	hasTrailingParam(const std::string &msg)
+{
+    return (msg.find(':') != std::string::npos);
 }
 
 static int  operatorCommand(std::map<int, ClientConnection> &clients,
@@ -188,7 +191,7 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 	}
 	if (msg.rfind("TOPIC ", 0) == 0)
 	{
-		channel.topicCmd(parameters, channel, clients, fd, fds);
+		channel.topicCmd(parameters, hasTrailingParam(msg), channel, clients, fd, fds);
 		return (bytesReceived);
 	}
 	if (msg.rfind("MODE ", 0) == 0)
