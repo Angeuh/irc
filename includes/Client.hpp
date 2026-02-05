@@ -1,13 +1,6 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
-# include <cstring>
-# include <iostream>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <unistd.h>
-# include <vector>
-# include <poll.h>
-
+# include "header.hpp"
 
 class Client
 {

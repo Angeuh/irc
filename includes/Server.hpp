@@ -1,24 +1,11 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
-# include <cstring>
-# include <iostream>
-# include <cstdlib>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <arpa/inet.h>
-# include <unistd.h>
-# include <vector>
-# include <poll.h>
-# include <map>
-# include <sstream>
-# include "ClientConnection.hpp"
-# include "Client.hpp"
-# include "Channel.hpp"
+# include "header.hpp"
+
 # define SERVERNAME "localhost"
 
 class Channel;
-
-// /connect DALNET + /RAWLOG OPEN debug.log for debug logs on official server
+class ClientConnection;
 
 class Server
 {

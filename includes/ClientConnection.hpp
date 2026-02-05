@@ -1,7 +1,6 @@
 #ifndef CLIENTCONNECTION_HPP
 # define CLIENTCONNECTION_HPP
-# include <iostream>
-# include <string>
+# include "header.hpp"
 
 class ClientConnection
 {

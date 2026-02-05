@@ -6,7 +6,7 @@
 #    By: sconiat <sconiat@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/17 14:54:45 by sconiat           #+#    #+#              #
-#    Updated: 2026/02/04 18:03:36 by sconiat          ###   ########.fr        #
+#    Updated: 2026/02/05 22:36:01 by sconiat          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,7 @@ SRC_DIR		= .
 OBJ_DIR 	= obj
 INC_DIR 	= ../includes/
 
-SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp
+SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp
 SRC			:= $(addprefix $(SRC_DIR)/, $(SRC))
 
 OBJ			= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

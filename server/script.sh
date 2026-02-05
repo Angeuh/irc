@@ -18,17 +18,3 @@ xdotool key Return
 sleep 2
 xdotool type "/join #test"
 xdotool key Return
-xterm -e "irssi -n fifi -c localhost -p 8080" &
-sleep 2
-xdotool type "/RAWLOG OPEN debugFifi.log"
-xdotool key Return
-sleep 2
-xdotool type "/join #test"
-xdotool key Return
-xterm -e "irssi -n loulou -c localhost -p 8080" &
-sleep 2
-xdotool type "/RAWLOG OPEN debugLoulou.log"
-xdotool key Return
-sleep 2
-xdotool type "/join #test"
-xdotool key Return
