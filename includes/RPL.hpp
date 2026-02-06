@@ -16,13 +16,17 @@ class RPL
         RPL( void );
         ~RPL( void );
 
-		static std::string	rplNoTopic(const std::string &, const std::string &);
-		static std::string	rplTopic(const std::string &, const std::string &,  const std::string &);
+		static std::string	rplNoTopic( const std::string &, const std::string & );
+		static std::string	rplTopic( const std::string &, const std::string &,  const std::string & );
 
-		static std::string	errNeedMoreParams(const std::string &command);
-		static std::string	errNotOnChannel(const std::string &command);
-		static std::string	errChanOpPrivsNeeded(const std::string &, const std::string &);
-		static std::string	errNoChanModes(const std::string &command);
+		static std::string	rplInviting( const std::string &, const std::string &,  const std::string & );
+
+		static std::string	errNeedMoreParams( const std::string & );
+		static std::string	errNotOnChannel( const std::string & );
+		static std::string	errChanOpPrivsNeeded( const std::string &, const std::string & );
+		static std::string	errNoChanModes( const std::string & );
+
+		static void			sendRPL( ClientConnection &client, const std::string &content, std::vector<pollfd> &fds );
 };
 
 #endif

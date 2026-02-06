@@ -16,3 +16,4 @@
 # include "Channel.hpp"
 # include "Server.hpp"
 # include "RPL.hpp"
+# include "Message.hpp"

@@ -2,7 +2,7 @@
 
 Channel::Channel() {}
 
-Channel::Channel(const std::string & n, int user) : name(n), topic("") {
+Channel::Channel(const std::string & n, int user) : name(n), topic(""), isInviteOnly(false) {
 	this->users.insert(user);
 	this->operators.insert(user);
 }
@@ -36,25 +36,29 @@ int		Channel::kickCmd( std::string &param )
 	return (1);
 }
 
-int		Channel::inviteCmd( std::string &param )
+// format : INVITE <nickname> <channel>
+int		Channel::inviteCmd( std::string &param, bool hasParam,
+	std::map<int, ClientConnection> &clients, int fd, std::vector<pollfd> &fds )
 {
-	(void) param;
+	if (this->isOperator(fd) == false && this->isInviteOnly == true) 
+		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
+
 	return (1);
 }
 
 // format : TOPIC [param]
-int		Channel::topicCmd( std::string &param, bool hasParam, Channel &channel,
+int		Channel::topicCmd( std::string &param, bool hasParam,
 	std::map<int, ClientConnection> &clients, int fd, std::vector<pollfd> &fds )
 {
-	if (hasParam == false) { // no param : show topic
-		sendingMessage(clients[fd], RPL::rplTopic(clients[fd].username, channel.name, param), fds);
-	} else if (this->isOperator(fd) == false) { //not operator
-		sendingMessage(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, channel.name), fds);
-	} else if (param.empty()) { // empty param : remove topic
-		channel.topic = "";
-		sendingMessage(clients[fd], RPL::rplTopic(clients[fd].username, channel.name, param), fds);
-	} else { // replace/set topic + tell all users
-		channel.topic = param;
+	if (hasParam == false) {
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, param), fds);
+	} else if (this->isOperator(fd) == false) {
+		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
+	} else if (param.empty()) {
+		this->topic = "";
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, param), fds);
+	} else {
+		this->topic = param;
 		broadcastingMessage(clients, param, "TOPIC", fd, fds);
 	}
 	return (1);

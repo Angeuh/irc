@@ -7,10 +7,11 @@ class ClientConnection;
 class Channel
 {
     private:
-		std::string		name;
+		std::string		name; // 50 char max, case insensitive ! no ',' or ' '
 		std::string		topic;
         std::set<int>	users;
         std::set<int>	operators;
+		bool			isInviteOnly;
 
     public:
         Channel( void );
@@ -22,8 +23,8 @@ class Channel
 		bool	isOnChannel( int );
 
 		int		kickCmd( std::string & );
-		int		inviteCmd( std::string & );
-		int		topicCmd( std::string &, bool, Channel &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		inviteCmd( std::string &, bool, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		topicCmd( std::string &, bool, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
 		int		modeCmd( std::string & );
 };
 

@@ -36,7 +36,4 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 int fd,
                                 std::vector<pollfd> &fds);
 
-
-void sendingMessage(ClientConnection &client, const std::string &content, std::vector<pollfd> &fds);
-
 #endif

@@ -186,12 +186,12 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 	}
 	if (msg.rfind("INVITE ", 0) == 0)
 	{
-		channel.inviteCmd(parameters);
+		channel.inviteCmd(parameters, hasTrailingParam(msg), clients, fd, fds);
 		return (bytesReceived);
 	}
 	if (msg.rfind("TOPIC ", 0) == 0)
 	{
-		channel.topicCmd(parameters, hasTrailingParam(msg), channel, clients, fd, fds);
+		channel.topicCmd(parameters, hasTrailingParam(msg), clients, fd, fds);
 		return (bytesReceived);
 	}
 	if (msg.rfind("MODE ", 0) == 0)
@@ -200,26 +200,6 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 		return (bytesReceived);
 	}
 	return (0);
-}
-
-// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
-// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
-// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
-
-void sendingMessage(ClientConnection &client, const std::string &content, std::vector<pollfd> &fds)
-{
-    client.writeBuffer += content;
-    std::vector<pollfd>::iterator pit = fds.begin();
-    for (; pit != fds.end(); ++pit)
-    {
-    	if (pit->fd == client.fd)
-			break;
-	}
-	pit->events |= POLLOUT;
-    std::cout << "[RPL/ERR] client=" << client.username
-        << " channel='" << client.currentChannel
-        << "' msg='" << content << "'\n";
-    std::cout << "RPL/ERR OK: " << content;
 }
 
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
@@ -273,6 +253,12 @@ int Server::handleClientMessage(size_t index)
         return -1;
     }
     std::string msg(buffer, bytesReceived);
+	try {
+		Message(buffer, bytesReceived);
+	}
+	catch (Message::ParsingError& e) {
+		std::cout << e.what() << std::endl;
+	}
     msg = trimCRLF(msg);
     std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
