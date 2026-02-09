@@ -1,4 +1,4 @@
-#include "../includes/header.hpp"
+#include "../includes/Server.hpp"
 
 Server::Server()
 {
@@ -253,12 +253,13 @@ int Server::handleClientMessage(size_t index)
         return -1;
     }
     std::string msg(buffer, bytesReceived);
-	try {
-		Message(buffer, bytesReceived);
-	}
-	catch (Message::ParsingError& e) {
-		std::cout << e.what() << std::endl;
-	}
+	// try {
+	// 	Message	parsedMsg(buffer, bytesReceived);
+	// 	std::cout << parsedMsg;
+	// }
+	// catch (Message::ParsingError& e) {
+	// 	std::cout << e.what() << std::endl;
+	// }
     msg = trimCRLF(msg);
     std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)

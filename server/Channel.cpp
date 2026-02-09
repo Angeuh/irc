@@ -1,4 +1,4 @@
-#include "../includes/header.hpp"
+#include "../includes/Channel.hpp"
 
 Channel::Channel() {}
 
@@ -40,9 +40,15 @@ int		Channel::kickCmd( std::string &param )
 int		Channel::inviteCmd( std::string &param, bool hasParam,
 	std::map<int, ClientConnection> &clients, int fd, std::vector<pollfd> &fds )
 {
-	if (this->isOperator(fd) == false && this->isInviteOnly == true) 
-		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
-
+	(void) param;
+	(void) hasParam;
+	(void) clients;
+	(void) fd;
+	(void) fds;
+	// if (this->isOperator(fd) == false && this->isInviteOnly == true) 
+		// RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
+	if (this->isInviteOnly)
+		std::cout << "ok\n";
 	return (1);
 }
 

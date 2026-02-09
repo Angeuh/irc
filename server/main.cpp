@@ -2,6 +2,12 @@
 // socket programming
 
 #include "../includes/header.hpp"
+# include "ClientConnection.hpp"
+# include "Client.hpp"
+# include "Channel.hpp"
+# include "Server.hpp"
+# include "RPL.hpp"
+# include "Message.hpp"
 
 /* int main() {
     // Create listening socket
@@ -72,31 +78,33 @@
     return 0;
 } */
 
-int checkArguments(int ac, char *av[], int socket)
+int checkArguments(int ac, char *av[], int &socket)
 {
     if (ac != 3)
     {
         std::cerr << "Server connection requires a port number and password, only those two" << std::endl;
-        return 1;
+        return (FAILURE);
     }
+	socket = std::atoi(av[1]);
     if (socket <= 0 || socket >= 65536)
     {
         std::cerr << "Port doesn't exist" << std::endl;
-        return 1;
+        return (FAILURE);
     }
     if (!av[2] || strcmp(av[2], "123") != 0)
     {
         std::cerr << "Wrong password" << std::endl;
-        return 1;
+        return (FAILURE);
     }
-    return 0;
+    return (SUCCESS);
 }
 
 int main(int ac, char *av[])
 {
-    int socket = std::atoi(av[1]);
-    if (checkArguments(ac, av, socket) != 0)
-        return 1;
+    int socket;
+
+	if (checkArguments(ac, av, socket) != 0)
+		return (FAILURE);
     try
     {
         Server server(socket);
@@ -105,8 +113,49 @@ int main(int ac, char *av[])
     catch (const std::exception &e)
     {
         std::cerr << "Server failed to start: " << e.what() << std::endl;
-        return 1;
+        return (FAILURE);
     }
 
-    return 0;
+    return (SUCCESS);
 }
+
+//main to test parser
+// int main()
+// {
+//     std::vector<std::string> tests;
+
+// 		// Simple commands
+//        tests.push_back("PING :irc.example.net\r\n");
+//        tests.push_back("NICK mynick\r\n");
+//        tests.push_back("USER user 0 * :Real Name\r\n");
+//        // With prefix
+//        tests.push_back(":nick!user@host JOIN #cpp\r\n");
+//        tests.push_back(":nick!user@host PART #cpp :bye everyone\r\n");
+//        // PRIVMSG cases
+//        tests.push_back("PRIVMSG #cpp :hello world\r\n");
+//        tests.push_back(":nick!user@host PRIVMSG #cpp :hello world\r\n");
+//        // Numeric reply
+//        tests.push_back(":irc.example.net 001 mynick :Welcome to IRC\r\n");
+//        // Multiple params
+//        tests.push_back("MODE #cpp +o othernick\r\n");
+//        // Edge cases
+//        tests.push_back("PRIVMSG #cpp :\r\n");                // empty trailing
+//        tests.push_back("PRIVMSG   #cpp   :hi\r\n");          // multiple spaces
+//        tests.push_back("PING\r\n");                          // no params
+//        tests.push_back("::weird\r\n");                       // malformed prefix
+
+// 	for (size_t i = 0; i < tests.size(); ++i)
+// 	{
+// 		const std::string &line = tests[i];
+//         try {
+// 			std::cout << std::endl << "PROCESSING LINE : " << line;
+//             Message m(line);
+//             std::cout << m << std::endl;
+//         }
+//         catch (const std::exception &e) {
+//             std::cout << e.what() << std::endl;
+//             std::cout << "Line : " << line;
+//         }
+//     }
+//     return 0;
+// }

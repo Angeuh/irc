@@ -1,4 +1,4 @@
-#include "../includes/header.hpp"
+#include "../includes/ClientConnection.hpp"
 
 ClientConnection::ClientConnection() : loggedIn(false) {}
 
