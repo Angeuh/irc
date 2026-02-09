@@ -1,19 +1,15 @@
-# include <cstring>
 # include <iostream>
-# include <netinet/in.h>
-# include <sys/socket.h>
-# include <unistd.h>
-# include <vector>
-# include <poll.h>
-# include <set>
 # include <sstream>
-# include <cstdlib>
+# include <poll.h>
+# include <sys/socket.h>
 # include <arpa/inet.h>
+# include <netinet/in.h>
+# include <unistd.h>
+# include <cstdlib>
+# include <cstring>
+# include <set>
 # include <map>
+# include <vector>
 
-# include "ClientConnection.hpp"
-# include "Client.hpp"
-# include "Channel.hpp"
-# include "Server.hpp"
-# include "RPL.hpp"
-# include "Message.hpp"
+# define SUCCESS 0
+# define FAILURE 1

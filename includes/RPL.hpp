@@ -1,8 +1,14 @@
 #ifndef RPL_HPP
 # define RPL_HPP
 # include "header.hpp"
+# include "ClientConnection.hpp"
+# include "Client.hpp"
+# include "Channel.hpp"
+# include "Server.hpp"
+# include "Message.hpp"
 
 // /connect DALNET + /RAWLOG OPEN debug.log for debug logs on official server (to test display)
+class ClientConnection;
 
 class RPL
 {

@@ -1,6 +1,11 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 # include "header.hpp"
+# include "ClientConnection.hpp"
+# include "Client.hpp"
+# include "Server.hpp"
+# include "RPL.hpp"
+# include "Message.hpp"
 
 class ClientConnection;
 

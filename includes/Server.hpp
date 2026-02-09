@@ -1,7 +1,11 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 # include "header.hpp"
-
+# include "ClientConnection.hpp"
+# include "Client.hpp"
+# include "Channel.hpp"
+# include "RPL.hpp"
+# include "Message.hpp"
 # define SERVERNAME "localhost"
 
 class Channel;
