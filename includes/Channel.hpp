@@ -8,6 +8,7 @@
 # include "Message.hpp"
 
 class ClientConnection;
+class Message;
 
 class Channel
 {
@@ -27,10 +28,10 @@ class Channel
 		bool	isOperator( int );
 		bool	isOnChannel( int );
 
-		int		kickCmd( std::string & );
-		int		inviteCmd( std::string &, bool, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
-		int		topicCmd( std::string &, bool, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
-		int		modeCmd( std::string & );
+		int		kickCmd( Message & );
+		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		modeCmd( Message & );
 };
 
 #endif

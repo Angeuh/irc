@@ -41,7 +41,8 @@ class Message
 		t_token					prefix;
 		t_token					command;
 		std::vector<t_token>	params;
-		bool					isTrailingEmpty;
+		bool					hasParam;
+		bool					hasTrailing;
 
 		class ParsingError : public std::exception {
     		public:

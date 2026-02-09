@@ -160,46 +160,33 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
     return 0;
 }
 
-static std::string getTrailingParam(const std::string &msg)
-{
-    size_t pos = msg.find(':');
-    return (msg.substr(pos + 1));
-}
-
-static bool	hasTrailingParam(const std::string &msg)
-{
-    return (msg.find(':') != std::string::npos);
-}
-
 static int  operatorCommand(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::map<std::string, Channel> &channels,
+    Message &msg, int fd, std::map<std::string, Channel> &channels,
 	std::vector<pollfd> &fds)
 {
-	std::string	parameters = getTrailingParam(msg);
-	int			bytesReceived = msg.size();
 	Channel		channel = channels[clients[fd].currentChannel];
 
-	if (msg.rfind("KICK ", 0) == 0)
+	if (msg.command.value == "KICK")
 	{
-		channel.kickCmd(parameters);
-		return (bytesReceived);
+		channel.kickCmd(msg);
+		return (SUCCESS);
 	}
-	if (msg.rfind("INVITE ", 0) == 0)
+	if (msg.command.value == "INVITE")
 	{
-		channel.inviteCmd(parameters, hasTrailingParam(msg), clients, fd, fds);
-		return (bytesReceived);
+		channel.inviteCmd(msg, clients, fd, fds);
+		return (SUCCESS);
 	}
-	if (msg.rfind("TOPIC ", 0) == 0)
+	if (msg.command.value == "TOPIC")
 	{
-		channel.topicCmd(parameters, hasTrailingParam(msg), clients, fd, fds);
-		return (bytesReceived);
+		channel.topicCmd(msg, clients, fd, fds);
+		return (SUCCESS);
 	}
-	if (msg.rfind("MODE ", 0) == 0)
+	if (msg.command.value == "MODE")
 	{
-		channel.modeCmd(parameters);
-		return (bytesReceived);
+		channel.modeCmd(msg);
+		return (SUCCESS);
 	}
-	return (0);
+	return (FAILURE);
 }
 
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
@@ -253,13 +240,7 @@ int Server::handleClientMessage(size_t index)
         return -1;
     }
     std::string msg(buffer, bytesReceived);
-	// try {
-	// 	Message	parsedMsg(buffer, bytesReceived);
-	// 	std::cout << parsedMsg;
-	// }
-	// catch (Message::ParsingError& e) {
-	// 	std::cout << e.what() << std::endl;
-	// }
+	Message		parsedMsg(buffer, bytesReceived);
     msg = trimCRLF(msg);
     std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
     if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
@@ -267,7 +248,7 @@ int Server::handleClientMessage(size_t index)
     if (msg.rfind("JOIN ", 0) == 0) {
         return joinChannel(clients, msg, fd, fds, channels);
 	}
-	if (operatorCommand(clients, msg, fd, channels, fds) == bytesReceived)
+	if (operatorCommand(clients, parsedMsg, fd, channels, fds) == SUCCESS)
 		return bytesReceived;
     if (msg.rfind("PRIVMSG ", 0) == 0)
     {
