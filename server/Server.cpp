@@ -115,49 +115,46 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
     return bytesReceived;
 }
 
+static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
+{
+	//to do
+	(void) clients;
+	(void) nick;
+	return (SUCCESS);
+}
+
+static int	verifNickname( std::string &nick )
+{
+	//to do
+	(void) nick;
+	return (SUCCESS);
+}
 
 static int  connectionIrssi(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::vector<pollfd> &fds)
+    Message &msg, int fd, std::vector<pollfd> &fds)
 {
-    int bytesReceived = msg.size();
-    if (msg.rfind("NICK ", 0) == 0)
+    if (msg.command.value == "NICK")
     {
-        std::string nick = msg.substr(5);
-       while (!nick.empty() &&
-       (nick[nick.size() - 1] == '\r' || nick[nick.size() - 1] == '\n'))
-            nick.erase(nick.size() - 1);
-        clients[fd].username = nick;
-        std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
-        clients[fd].writeBuffer += welcome;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == fd)
-				p.events |= POLLOUT;
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(clients[fd], RPL::errNoNickNameGiven(), fds);
+		else if (verifNickname(msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(clients[fd], RPL::errErroneusNickname(), fds);
+		} else if (isNicknameAvailable(clients, msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(clients[fd], RPL::errNickNameInUse(), fds);
+		} else
+			clients[fd].username = msg.params[0].value;
+    } else if (msg.command.value == "USER") {
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(clients[fd], RPL::errNeedMoreParams("USER"), fds);
+		else {
+			clients[fd].name = msg.params.back().value;
+			RPL::sendRPL(clients[fd], RPL::rplWelcome(clients[fd].username), fds);
 		}
-        return bytesReceived;
-    }
-
-    if (msg.rfind("USER ", 0) == 0)
-{
-    size_t size = msg.find(":");
-    if (size != std::string::npos)
-        clients[fd].name = msg.substr(size + 1);
-    return bytesReceived;
-}
-    if (msg.find("CAP LS") == 0)
-    {
-        std::string reply = ":server CAP * LS :\r\n";
-        clients[fd].writeBuffer += reply;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == fd)
-				p.events |= POLLOUT;
-		}
-        return bytesReceived;
-    }
-    return 0;
+	} else if (msg.rawMessage.find("CAP LS") == 0) {
+		RPL::sendRPL(clients[fd], ":localhost CAP * LS:\r\n", fds);
+    } else
+		return 0;
+	return (msg.rawMessage.size());
 }
 
 static int  operatorCommand(std::map<int, ClientConnection> &clients,
@@ -166,27 +163,17 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 {
 	Channel		channel = channels[clients[fd].currentChannel];
 
-	if (msg.command.value == "KICK")
-	{
+	if (msg.command.value == "KICK") {
 		channel.kickCmd(msg);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "INVITE")
-	{
+	} else if (msg.command.value == "INVITE") {
 		channel.inviteCmd(msg, clients, fd, fds);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "TOPIC")
-	{
+	} else if (msg.command.value == "TOPIC") {
 		channel.topicCmd(msg, clients, fd, fds);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "MODE")
-	{
+	} else if (msg.command.value == "MODE") {
 		channel.modeCmd(msg);
-		return (SUCCESS);
-	}
-	return (FAILURE);
+	} else
+		return (FAILURE);
+	return (SUCCESS);
 }
 
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
@@ -242,8 +229,8 @@ int Server::handleClientMessage(size_t index)
     std::string msg(buffer, bytesReceived);
 	Message		parsedMsg(buffer, bytesReceived);
     msg = trimCRLF(msg);
-    std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
-    if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
+    // std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
+    if (connectionIrssi(clients, parsedMsg, fd, fds) == bytesReceived)
         return bytesReceived;
     if (msg.rfind("JOIN ", 0) == 0) {
         return joinChannel(clients, msg, fd, fds, channels);

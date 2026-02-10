@@ -22,6 +22,7 @@ class RPL
         RPL( void );
         ~RPL( void );
 
+		static std::string	rplWelcome( const std::string & );
 		static std::string	rplNoTopic( const std::string &, const std::string & );
 		static std::string	rplTopic( const std::string &, const std::string &,  const std::string & );
 
@@ -31,6 +32,9 @@ class RPL
 		static std::string	errNotOnChannel( const std::string & );
 		static std::string	errChanOpPrivsNeeded( const std::string &, const std::string & );
 		static std::string	errNoChanModes( const std::string & );
+		static std::string	errNoNickNameGiven( void );
+		static std::string	errErroneusNickname( void );
+		static std::string	errNickNameInUse( void );
 
 		static void			sendRPL( ClientConnection &client, const std::string &content, std::vector<pollfd> &fds );
 };

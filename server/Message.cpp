@@ -4,7 +4,7 @@ Message::Message() {}
 
 Message::Message( const std::string& msg ) :
 	rawMessage(msg),
-	hasParam(false),
+	howManyParam(0),
 	hasTrailing(false)
 {
 	this->prefix.value = "";
@@ -14,13 +14,14 @@ Message::Message( const std::string& msg ) :
 
 Message::Message(const char *buf, int bytesReceived) : 
 	rawMessage(std::string(buf, bytesReceived)),
-	hasParam(false),
+	howManyParam(0),
 	hasTrailing(false)
 {
 	std::cout << rawMessage << std::endl;
 	this->prefix.value = "";
 	this->command.value = "";
 	this->parseMessage();
+	std::cout << *this;
 }
 
 Message::~Message() {}
@@ -94,7 +95,7 @@ void	Message::parseMessage()
 			readUntilDelimiter(this->rawMessage, i, " :\r");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
-			this->hasParam = true;
+			this->howManyParam++;
 			if (this->rawMessage[i] == '\r') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
@@ -111,8 +112,10 @@ void	Message::parseMessage()
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
 			this->hasTrailing = true;
+			this->howManyParam++;
 			if (token.value.empty()) {
 				this->params.pop_back();
+				this->howManyParam--;
 				this->hasTrailing = false;
 			}
 			state = END;
