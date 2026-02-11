@@ -77,8 +77,8 @@ void RPL::sendRPL(ClientConnection &client, const std::string &content, std::vec
 			break;
 	}
 	pit->events |= POLLOUT;
-    std::cout << "[RPL/ERR] client=" << client.username
+    std::cout << "[RPL/ERR] sender=" << client.username
         << " channel='" << client.currentChannel
         << "' msg='" << content << "'\n";
-    std::cout << "RPL/ERR OK: " << content;
+    std::cout << "RPL/ERR OK: " << content << std::endl;
 }

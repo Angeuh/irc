@@ -54,14 +54,7 @@ int Server::acceptNewClient()
     fds.push_back(pfd);
     clients.insert(std::make_pair(clientSocket, ClientConnection()));
     clients[clientSocket].fd = clientSocket;
-	std::ostringstream ss;
-	ss << "user" << clientSocket;
-	clients[clientSocket].username = ss.str();
-    std::string defaultNick = clients[clientSocket].username;
-    //clients[clientSocket].fd = inet_ntoa(clients.sin_addr);
-    std::string welcome = ":server 001 " + defaultNick + " :Welcome to IRC\r\n";
-    clients[clientSocket].writeBuffer += welcome;
-    std::cout << "New client connected: " << clientSocket << std::endl;
+    std::cout << "New client connected: fd " << clientSocket << std::endl;
     return clientSocket;
 }
 
@@ -153,8 +146,8 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
 	} else if (msg.rawMessage.find("CAP LS") == 0) {
 		RPL::sendRPL(clients[fd], ":localhost CAP * LS:\r\n", fds);
     } else
-		return 0;
-	return (msg.rawMessage.size());
+		return (FAILURE);
+	return (SUCCESS);
 }
 
 static int  operatorCommand(std::map<int, ClientConnection> &clients,
@@ -214,50 +207,44 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
     std::cout << "Broadcast OK: " << ircMsg;
 }
 
-int Server::handleClientMessage(size_t index)
+void	Server::handleClientMessage( Message &msg, int fd )
 {
-    int fd = fds[index].fd;
-    char buffer[2048];
-    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	if (connectionIrssi(this->clients, msg, fd, this->fds) == SUCCESS)
+        return ;
+    if (msg.command.value == "JOIN") {
+        joinChannel(this->clients, msg.rawMessage, fd, this->fds, this->channels);
+	}
+	if (operatorCommand(this->clients, msg, fd, this->channels, this->fds) == SUCCESS)
+		return ;
+    if (msg.command.value == "PRIVMSG") {
+		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd, fds);
+	}
+}
+
+void Server::callRecv(int fd, int index)
+{
+	char	buffer[4096];
+    int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
     if (bytesReceived <= 0)
     {
         close(fd);
-        clients.erase(fd);
-        fds.erase(fds.begin() + index);
-        return -1;
+        this->clients.erase(fd);
+        this->fds.erase(this->fds.begin() + index);
+        return ;
     }
-    std::string msg(buffer, bytesReceived);
-	Message		parsedMsg(buffer, bytesReceived);
-    msg = trimCRLF(msg);
-    // std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
-    if (connectionIrssi(clients, parsedMsg, fd, fds) == bytesReceived)
-        return bytesReceived;
-    if (msg.rfind("JOIN ", 0) == 0) {
-        return joinChannel(clients, msg, fd, fds, channels);
+	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
+	size_t	pos;
+
+	pos = this->clients[fd].readBuffer.find("\r\n");
+	while (pos != std::string::npos)
+	{
+		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
+		this->clients[fd].readBuffer.erase(0, pos + 2);
+		Message	msg(line);
+		std::cout << msg << std::endl;
+		handleClientMessage(msg, fd);
+		pos = this->clients[fd].readBuffer.find("\r\n");
 	}
-	if (operatorCommand(clients, parsedMsg, fd, channels, fds) == SUCCESS)
-		return bytesReceived;
-    if (msg.rfind("PRIVMSG ", 0) == 0)
-    {
-        size_t colon = msg.find(" :");
-        if (colon != std::string::npos)
-        {
-            std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error, i didnt' trim there before (resolved)
-            broadcastingMessage(clients, content, "PRIVMSG", fd, fds);
-        }
-    }
-    // Log raw incoming data, for test only, but i'll keep it for push, always useful
-    std::cout << "\n--- RAW MESSAGE RECEIVED FROM FD " 
-            << fd << " ---\n";
-    for (int i = 0; i < bytesReceived; i++)
-    {
-        unsigned char c = buffer[i];
-        if (c == '\r') std::cout << "\\r";
-        else if (c == '\n') std::cout << "\\n";
-        else std::cout << c;
-    }
-    std::cout << "\n-------------------------------------\n\n";
-    return bytesReceived;
 }
 
 void    Server::run()
@@ -282,7 +269,7 @@ void    Server::run()
             if (fds[i].fd == serverSocket && (fds[i].revents & POLLIN))
                 acceptNewClient();
             else if (fds[i].revents & POLLIN)
-                handleClientMessage(i);
+                callRecv(fds[i].fd, i);
             else if (fds[i].revents & POLLOUT)
             {
                 int fd = fds[i].fd;

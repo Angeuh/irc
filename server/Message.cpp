@@ -21,7 +21,6 @@ Message::Message(const char *buf, int bytesReceived) :
 	this->prefix.value = "";
 	this->command.value = "";
 	this->parseMessage();
-	std::cout << *this;
 }
 
 Message::~Message() {}
