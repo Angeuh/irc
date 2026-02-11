@@ -59,9 +59,15 @@ std::string	RPL::errErroneusNickname( void )
 {
 	return ":" + std::string(SERVERNAME) + " 432 :Erroneous nickname\r\n";
 }
+
 std::string	RPL::errNickNameInUse( void )
 {
 	return ":" + std::string(SERVERNAME) + " 433 :Nickname is already in use\r\n";
+}
+
+std::string	RPL::errAlreadyRegistred( void )
+{
+	return ":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n";
 }
 // - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
 // - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";

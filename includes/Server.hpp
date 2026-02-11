@@ -10,6 +10,7 @@
 
 class Channel;
 class ClientConnection;
+class Message;
 
 class Server
 {
@@ -20,7 +21,8 @@ class Server
 		std::map<std::string, Channel>	channels;
 	
         int     acceptNewClient();
-        int     handleClientMessage(size_t index);
+		void	callRecv( int, int );
+		void	handleClientMessage( Message &, int );
 
     public:
         Server();

@@ -35,6 +35,7 @@ class RPL
 		static std::string	errNoNickNameGiven( void );
 		static std::string	errErroneusNickname( void );
 		static std::string	errNickNameInUse( void );
+		static std::string	errAlreadyRegistred( void );
 
 		static void			sendRPL( ClientConnection &client, const std::string &content, std::vector<pollfd> &fds );
 };

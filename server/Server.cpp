@@ -143,9 +143,13 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
 			clients[fd].name = msg.params.back().value;
 			RPL::sendRPL(clients[fd], RPL::rplWelcome(clients[fd].username), fds);
 		}
-	} else if (msg.rawMessage.find("CAP LS") == 0) {
-		RPL::sendRPL(clients[fd], ":localhost CAP * LS:\r\n", fds);
-    } else
+	} else if (msg.command.value == "PASS") {
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(clients[fd], RPL::errNoNickNameGiven(), fds);
+		else if (clients[fd].isRegistered) {
+			RPL::sendRPL(clients[fd], RPL::errAlreadyRegistred(), fds);
+		}
+	} else
 		return (FAILURE);
 	return (SUCCESS);
 }
@@ -276,7 +280,7 @@ void    Server::run()
 				ClientConnection &client = clients[fd];
                 if (!client.writeBuffer.empty())
                 {
-                    std::cout << "Sending to " << fd << ": " << client.writeBuffer;
+                    // std::cout << "Sending to " << fd << ": " << client.writeBuffer;
                     int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);
 
                     if (sent > 0)

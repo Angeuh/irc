@@ -13,7 +13,6 @@ class Client
     private:
         int sock;
 
-
     public:
         Client();
         ~Client();
