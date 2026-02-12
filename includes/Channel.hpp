@@ -17,7 +17,7 @@ class Channel
 		std::string		topic;
         std::set<int>	users;
         std::set<int>	operators;
-		bool			isInviteOnly;
+		// bool			isInviteOnly;
 
     public:
         Channel( void );

@@ -1,9 +1,6 @@
 #include "../includes/Server.hpp"
 
-Server::Server()
-{
-    std::cout << "Default Server constructor " << std::endl;
-}
+Server::Server() {}
 
 Server::~Server()
 {
@@ -11,7 +8,8 @@ Server::~Server()
     std::cout << "Server Closed" << std::endl;
 }
 
-Server::Server(int port)
+Server::Server(int port, std::string pass) :
+	password(pass)
 {
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
@@ -108,71 +106,6 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
     return bytesReceived;
 }
 
-static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
-{
-	//to do
-	(void) clients;
-	(void) nick;
-	return (SUCCESS);
-}
-
-static int	verifNickname( std::string &nick )
-{
-	//to do
-	(void) nick;
-	return (SUCCESS);
-}
-
-static int  connectionIrssi(std::map<int, ClientConnection> &clients,
-    Message &msg, int fd, std::vector<pollfd> &fds)
-{
-    if (msg.command.value == "NICK")
-    {
-		if (msg.howManyParam == 0)
-			RPL::sendRPL(clients[fd], RPL::errNoNickNameGiven(), fds);
-		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(clients[fd], RPL::errErroneusNickname(), fds);
-		} else if (isNicknameAvailable(clients, msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(clients[fd], RPL::errNickNameInUse(), fds);
-		} else
-			clients[fd].username = msg.params[0].value;
-    } else if (msg.command.value == "USER") {
-		if (msg.howManyParam == 0)
-			RPL::sendRPL(clients[fd], RPL::errNeedMoreParams("USER"), fds);
-		else {
-			clients[fd].name = msg.params.back().value;
-			RPL::sendRPL(clients[fd], RPL::rplWelcome(clients[fd].username), fds);
-		}
-	} else if (msg.command.value == "PASS") {
-		if (msg.howManyParam == 0)
-			RPL::sendRPL(clients[fd], RPL::errNoNickNameGiven(), fds);
-		else if (clients[fd].isRegistered) {
-			RPL::sendRPL(clients[fd], RPL::errAlreadyRegistred(), fds);
-		}
-	} else
-		return (FAILURE);
-	return (SUCCESS);
-}
-
-static int  operatorCommand(std::map<int, ClientConnection> &clients,
-    Message &msg, int fd, std::map<std::string, Channel> &channels,
-	std::vector<pollfd> &fds)
-{
-	Channel		channel = channels[clients[fd].currentChannel];
-
-	if (msg.command.value == "KICK") {
-		channel.kickCmd(msg);
-	} else if (msg.command.value == "INVITE") {
-		channel.inviteCmd(msg, clients, fd, fds);
-	} else if (msg.command.value == "TOPIC") {
-		channel.topicCmd(msg, clients, fd, fds);
-	} else if (msg.command.value == "MODE") {
-		channel.modeCmd(msg);
-	} else
-		return (FAILURE);
-	return (SUCCESS);
-}
-
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
@@ -211,16 +144,82 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
     std::cout << "Broadcast OK: " << ircMsg;
 }
 
+static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
+{
+	//to do
+	(void) clients;
+	(void) nick;
+	return (SUCCESS);
+}
+
+static int	verifNickname( std::string &nick )
+{
+	//to do
+	(void) nick;
+	return (SUCCESS);
+}
+
+void	Server::handleRegistration( Message &msg, int fd )
+{
+	switch (msg.command) {
+	case NICK:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), this->fds);
+		else if (verifNickname(msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), this->fds);
+		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), this->fds);
+		} else {
+			this->clients[fd].username = msg.params[0].value;
+			this->clients[fd].hasNick = true;
+		}
+		break;
+	case USER:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), this->fds);
+		else {
+			this->clients[fd].name = msg.params.back().value;
+			this->clients[fd].hasUser = true;
+		}
+		break;
+	case PASS:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("PASS"), this->fds);
+		else if (this->clients[fd].isRegistered)
+			RPL::sendRPL(this->clients[fd], RPL::errAlreadyRegistred(), this->fds);
+		else {
+			this->clients[fd].connectionPass = msg.params[0].value;
+			this->clients[fd].hasPass = true;
+		}
+		break;
+	}
+	if (this->clients[fd].hasNick && this->clients[fd].hasUser && this->clients[fd].hasPass)
+	{
+		std::cout << "REGISTRATION OK :" << std::endl;
+		std::cout << "Client nickname : " << this->clients[fd].username << std::endl;
+		std::cout << "Client username : " << this->clients[fd].name << std::endl;
+		std::cout << "Client password : " << this->clients[fd].connectionPass << std::endl;
+		this->clients[fd].isRegistered = true;
+		RPL::sendRPL(this->clients[fd], RPL::rplWelcome(this->clients[fd].username), this->fds);
+	}
+}
+
 void	Server::handleClientMessage( Message &msg, int fd )
 {
-	if (connectionIrssi(this->clients, msg, fd, this->fds) == SUCCESS)
-        return ;
-    if (msg.command.value == "JOIN") {
-        joinChannel(this->clients, msg.rawMessage, fd, this->fds, this->channels);
-	}
-	if (operatorCommand(this->clients, msg, fd, this->channels, this->fds) == SUCCESS)
-		return ;
-    if (msg.command.value == "PRIVMSG") {
+	Channel		channel = this->channels[clients[fd].currentChannel];
+
+	switch (msg.command) {
+	case JOIN:
+		joinChannel(this->clients, msg.rawMessage, fd, this->fds, this->channels);
+	case TOPIC:
+		channel.topicCmd(msg, this->clients, fd, this->fds);
+	// case MODE:
+	// 	channel.modeCmd(msg);
+	// case INVITE:
+	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
+	// case KICK:
+	// 	channel.kickCmd(msg);
+	case PRIVMSG:
 		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd, fds);
 	}
 }
@@ -229,6 +228,8 @@ void Server::callRecv(int fd, int index)
 {
 	char	buffer[4096];
     int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	size_t	pos;
+
     if (bytesReceived <= 0)
     {
         close(fd);
@@ -237,8 +238,6 @@ void Server::callRecv(int fd, int index)
         return ;
     }
 	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
-	size_t	pos;
-
 	pos = this->clients[fd].readBuffer.find("\r\n");
 	while (pos != std::string::npos)
 	{
@@ -246,7 +245,10 @@ void Server::callRecv(int fd, int index)
 		this->clients[fd].readBuffer.erase(0, pos + 2);
 		Message	msg(line);
 		std::cout << msg << std::endl;
-		handleClientMessage(msg, fd);
+		if (clients[fd].isRegistered == true)
+			handleClientMessage(msg, fd);
+		else 
+			handleRegistration(msg, fd);
 		pos = this->clients[fd].readBuffer.find("\r\n");
 	}
 }

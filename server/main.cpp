@@ -107,7 +107,7 @@ int main(int ac, char *av[])
 		return (FAILURE);
     try
     {
-        Server server(socket);
+        Server server(socket, av[2]);
         server.run();
     }
     catch (const std::exception &e)

@@ -25,7 +25,9 @@ class ClientConnection
         std::string currentChannel;		// /join x (channel name)
 		bool		hasNick;
 		bool		hasUser;
+		bool		hasPass;
 		bool		isRegistered;
+		std::string	connectionPass;		// connection password set on registration
 };
 
 #endif 

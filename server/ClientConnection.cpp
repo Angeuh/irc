@@ -4,6 +4,7 @@ ClientConnection::ClientConnection() :
 	    fd(0),
 		hasNick(false),
 		hasUser(false),
+		hasPass(false),
 		isRegistered(false)
 {}
 

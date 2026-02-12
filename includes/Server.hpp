@@ -19,15 +19,17 @@ class Server
         std::vector<pollfd>				fds;
         std::map<int, ClientConnection>	clients;
 		std::map<std::string, Channel>	channels;
+		std::string						password;
 	
         int     acceptNewClient();
 		void	callRecv( int, int );
 		void	handleClientMessage( Message &, int );
+		void	handleRegistration( Message &, int );
 
     public:
         Server();
         ~Server();
-        Server(int port);
+        Server( int, std::string );
         void run(); // to start the server, somehow ?
 
     class PollError : public std::exception {
