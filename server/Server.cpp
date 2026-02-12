@@ -8,6 +8,7 @@ Server::Server()
 Server::~Server()
 {
     close(serverSocket);
+    close(epfd);
     std::cout << "Server Closed" << std::endl;
 }
 
@@ -23,6 +24,9 @@ Server::Server(int port)
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
+    epfd = epoll_create(1024);
+    if (epfd < 0)
+        throw std::runtime_error("epoll_create failed");
     if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
         throw std::runtime_error("Bind failed");
@@ -31,6 +35,7 @@ Server::Server(int port)
     {
         throw std::runtime_error("Listen failed");
     }
+    addToEpoll(serverSocket, EPOLLIN);
     std::cout << "Server listening on port " << port << std::endl;
 }
 
@@ -47,11 +52,7 @@ int Server::acceptNewClient()
         std::cerr << "Accept failed" << std::endl;
         return -1;
     }
-    pollfd pfd;
-    memset(&pfd, 0, sizeof(pollfd));
-    pfd.fd = clientSocket;
-    pfd.events = POLLIN;
-    fds.push_back(pfd);
+    addToEpoll(clientSocket, EPOLLIN);
     clients.insert(std::make_pair(clientSocket, ClientConnection()));
     clients[clientSocket].fd = clientSocket;
 	std::ostringstream ss;
@@ -78,18 +79,26 @@ static std::string trimCRLF(const std::string &s)
     return (s.substr(start, end - start));
 }
 
-static int joinChannel(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::vector<pollfd> &fds,
+int Server::joinChannel(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd,
 	std::map<std::string, Channel> &channels)
 {
     int bytesReceived = msg.size();
+
 
     // Extract channel name
     std::string channel = trimCRLF(msg.substr(5));
     std::cout << "Requested to join channel: '" << channel << "'\n";
     if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
         return -1;
-    std::cout << "[JOIN] fd=" << fd 
+    /* if(channel.get_isInviteOnly() == true)
+    {
+        // ERR_INVITEONLYCHAN err : 473
+        //           "<channel> :Cannot join channel (+i)"
+        std::cerr << "<channel> :Cannot join channel " << channel[0] << std::endl;
+        return -1;
+    } */
+    std::cout << "[JOIN] fd=" << fd
           << " requested channel: '" << msg << "'\n";
     std::cout << "[JOIN] normalized as: '" << channel << "'\n";
     if (channel.empty() || channel[0] != '#')
@@ -103,9 +112,7 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
         if (c.currentChannel == channel)
         {
             c.writeBuffer += joinMsg;
-            for (std::vector<pollfd>::iterator pIt = fds.begin(); pIt != fds.end(); ++pIt)
-                if (pIt->fd == c.fd)
-                    pIt->events |= POLLOUT;
+            this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
         }
     }
 	if (channels.find(channel) == channels.end())
@@ -116,8 +123,8 @@ static int joinChannel(std::map<int, ClientConnection> &clients,
 }
 
 
-static int  connectionIrssi(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd, std::vector<pollfd> &fds)
+int  Server::connectionIrssi(std::map<int, ClientConnection> &clients,
+    std::string &msg, int fd)
 {
     int bytesReceived = msg.size();
     if (msg.rfind("NICK ", 0) == 0)
@@ -129,12 +136,7 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
         clients[fd].username = nick;
         std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
         clients[fd].writeBuffer += welcome;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == fd)
-				p.events |= POLLOUT;
-		}
+		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
         return bytesReceived;
     }
 
@@ -149,22 +151,16 @@ static int  connectionIrssi(std::map<int, ClientConnection> &clients,
     {
         std::string reply = ":server CAP * LS :\r\n";
         clients[fd].writeBuffer += reply;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == fd)
-				p.events |= POLLOUT;
-		}
+		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
         return bytesReceived;
     }
     return 0;
 }
 
 static int  operatorCommand(std::map<int, ClientConnection> &clients,
-    Message &msg, int fd, std::map<std::string, Channel> &channels,
-	std::vector<pollfd> &fds)
+    Message &msg, int fd, std::map<std::string, Channel> &channels)
 {
-	Channel		channel = channels[clients[fd].currentChannel];
+	Channel	&channel = channels[clients[fd].currentChannel];
 
 	if (msg.command.value == "KICK")
 	{
@@ -173,12 +169,12 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 	}
 	if (msg.command.value == "INVITE")
 	{
-		channel.inviteCmd(msg, clients, fd, fds);
+		channel.inviteCmd(msg, clients, fd);
 		return (SUCCESS);
 	}
 	if (msg.command.value == "TOPIC")
 	{
-		channel.topicCmd(msg, clients, fd, fds);
+		channel.topicCmd(msg, clients, fd);
 		return (SUCCESS);
 	}
 	if (msg.command.value == "MODE")
@@ -189,11 +185,10 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 	return (FAILURE);
 }
 
-void broadcastingMessage(std::map<int, ClientConnection> &clients,
+void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
-                                int fd,
-                                std::vector<pollfd> &fds
+                                int fd
 							)
 {
 	bool skipSender = (command == "PRIVMSG");
@@ -211,12 +206,7 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
             (!skipSender || client.fd != fd))
         {
             client.writeBuffer += ircMsg;
-            std::vector<pollfd>::iterator pit = fds.begin();
-            for (; pit != fds.end(); ++pit)
-            {
-                if (pit->fd == client.fd)
-                    pit->events |= POLLOUT;
-            }
+            this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
         }
         std::cout << "[BROADCAST] sender=" << sender.username
           << " fd=" << fd
@@ -227,36 +217,37 @@ void broadcastingMessage(std::map<int, ClientConnection> &clients,
     std::cout << "Broadcast OK: " << ircMsg;
 }
 
-int Server::handleClientMessage(size_t index)
+int Server::handleClientMessage(int fd)
 {
-    int fd = fds[index].fd;
     char buffer[2048];
     int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
     if (bytesReceived <= 0)
     {
+        removeFromEpoll(fd);
         close(fd);
         clients.erase(fd);
-        fds.erase(fds.begin() + index);
         return -1;
     }
     std::string msg(buffer, bytesReceived);
 	Message		parsedMsg(buffer, bytesReceived);
     msg = trimCRLF(msg);
     std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
-    if (connectionIrssi(clients, msg, fd, fds) == bytesReceived)
+    if (connectionIrssi(clients, msg, fd) == bytesReceived)
         return bytesReceived;
     if (msg.rfind("JOIN ", 0) == 0) {
-        return joinChannel(clients, msg, fd, fds, channels);
+        return joinChannel(clients, msg, fd, channels);
 	}
-	if (operatorCommand(clients, parsedMsg, fd, channels, fds) == SUCCESS)
+	if (operatorCommand(clients, parsedMsg, fd, channels) == SUCCESS)
 		return bytesReceived;
     if (msg.rfind("PRIVMSG ", 0) == 0)
     {
         size_t colon = msg.find(" :");
         if (colon != std::string::npos)
         {
-            std::string content = trimCRLF(msg.substr(colon + 2)); // text only, was part of broadcasting error, i didnt' trim there before (resolved)
-            broadcastingMessage(clients, content, "PRIVMSG", fd, fds);
+            std::string content = trimCRLF(msg.substr(colon + 2));
+            if (content.length() > 510)
+                content = content.substr(0, 512);
+            broadcastingMessage(clients, content, "PRIVMSG", fd);
         }
     }
     // Log raw incoming data, for test only, but i'll keep it for push, always useful
@@ -273,45 +264,50 @@ int Server::handleClientMessage(size_t index)
     return bytesReceived;
 }
 
-void    Server::run()
+void Server::run()
 {
-    // Add listening socket to poll list
-    pollfd listenPoll;
-    memset(&listenPoll, 0, sizeof(pollfd));
-    listenPoll.fd = serverSocket;
-    listenPoll.events = POLLIN;
-    fds.push_back(listenPoll);
+    const int MAX_EVENTS = 64;
+    struct epoll_event events[MAX_EVENTS];
 
     while (true)
     {
-        int ret = poll(fds.data(), fds.size(), -1);
-        if (ret < 0)
-        {
-            throw PollError();
-        }
+        int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
 
-        for (size_t i = 0; i < fds.size(); i++)
+        if (n < 0)
+            throw PollError();
+
+        for (int i = 0; i < n; i++)
         {
-            if (fds[i].fd == serverSocket && (fds[i].revents & POLLIN))
-                acceptNewClient();
-            else if (fds[i].revents & POLLIN)
-                handleClientMessage(i);
-            else if (fds[i].revents & POLLOUT)
+            int fd = events[i].data.fd;
+            if (fd == serverSocket)
             {
-                int fd = fds[i].fd;
-				ClientConnection &client = clients[fd];
+                acceptNewClient();
+                continue;
+            }
+            if (events[i].events & EPOLLIN)
+            {
+                handleClientMessage(fd);
+            }
+            if (events[i].events & EPOLLOUT)
+            {
+                ClientConnection &client = clients[fd];
+
                 if (!client.writeBuffer.empty())
                 {
-                    std::cout << "Sending to " << fd << ": " << client.writeBuffer;
-                    int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);
+                    int sent = send(
+                        fd,
+                        client.writeBuffer.c_str(),
+                        client.writeBuffer.size(),
+                        0);
 
                     if (sent > 0)
                         client.writeBuffer.erase(0, sent);
-                    if (client.writeBuffer.empty()) {
-                        fds[i].events &= ~POLLOUT;
-                    }
+
+                    if (client.writeBuffer.empty())
+                        this->modifyEpoll(fd, EPOLLIN);
                 }
             }
         }
     }
 }
+

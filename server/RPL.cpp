@@ -34,6 +34,11 @@ std::string	RPL::errChanOpPrivsNeeded(const std::string &client, const std::stri
     return ":" + std::string(SERVERNAME) + " 482 " + client + " " + channel + " :You're not channel operator\r\n";
 }
 
+std::string	RPL::errInviteOnlyChan(const std::string &client, const std::string &channel)
+{
+    return ":" + std::string(SERVERNAME) + " 473 " + client + " " + channel + " :Cannot join channel\r\n";
+}
+
 std::string	RPL::errNoChanModes(const std::string &command)
 {
     return ":" + std::string(SERVERNAME) + " 477 " + command + " :Channel doesn't support modes\r\n";

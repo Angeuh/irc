@@ -12,6 +12,11 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
+bool	Channel::get_isInviteOnly()
+{
+	return (this->isInviteOnly);
+}
+
 void	Channel::insertUser( int user )
 {
 	this->users.insert(user);
@@ -38,12 +43,11 @@ int		Channel::kickCmd( Message &msg )
 
 // format : INVITE <nickname> <channel>
 int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
-	int fd, std::vector<pollfd> &fds )
+	int fd)
 {
 	(void) msg;
 	(void) clients;
 	(void) fd;
-	(void) fds;
 	// if (this->isOperator(fd) == false && this->isInviteOnly == true) 
 		// RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
 	if (this->isInviteOnly)
@@ -53,12 +57,11 @@ int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
 
 // format : TOPIC [param]
 int		Channel::topicCmd( Message &msg, std::map<int, ClientConnection> &clients,
-	int fd, std::vector<pollfd> &fds )
+	int fd)
 {
 	(void) msg;
 	(void) clients;
 	(void) fd;
-	(void) fds;
 	// if (msg.hasParam() == false) {
 	// 	RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, param), fds);
 	// } else if (this->isOperator(fd) == false) {
