@@ -16,14 +16,18 @@ class ClientConnection
 
 		ClientConnection();
         ~ClientConnection();	
-        int fd;                   // socket
-        std::string username;     // who they are
-        std::string readBuffer;   // partial incoming data
-        std::string writeBuffer;  // queued outgoing data
-        std::string name;         // real name used in irssi
-        std::string host;         // hostname or IP address
-        std::string currentChannel; // /join x (channel name)
-        bool loggedIn;  
+        int fd;							// socket
+        std::string username;			// who they are
+        std::string readBuffer;			// partial incoming data
+        std::string	writeBuffer;		// queued outgoing data
+        std::string name;				// real name used in irssi
+        std::string host;				// hostname or IP address
+        std::string currentChannel;		// /join x (channel name)
+		bool		hasNick;
+		bool		hasUser;
+		bool		hasPass;
+		bool		isRegistered;
+		std::string	connectionPass;		// connection password set on registration
 };
 
 #endif 

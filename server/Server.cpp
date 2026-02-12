@@ -1,9 +1,6 @@
 #include "../includes/Server.hpp"
 
-Server::Server()
-{
-    std::cout << "Default Server constructor " << std::endl;
-}
+Server::Server() {}
 
 Server::~Server()
 {
@@ -12,7 +9,8 @@ Server::~Server()
     std::cout << "Server Closed" << std::endl;
 }
 
-Server::Server(int port)
+Server::Server(int port, std::string pass) :
+	password(pass)
 {
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
@@ -55,14 +53,7 @@ int Server::acceptNewClient()
     addToEpoll(clientSocket, EPOLLIN);
     clients.insert(std::make_pair(clientSocket, ClientConnection()));
     clients[clientSocket].fd = clientSocket;
-	std::ostringstream ss;
-	ss << "user" << clientSocket;
-	clients[clientSocket].username = ss.str();
-    std::string defaultNick = clients[clientSocket].username;
-    //clients[clientSocket].fd = inet_ntoa(clients.sin_addr);
-    std::string welcome = ":server 001 " + defaultNick + " :Welcome to IRC\r\n";
-    clients[clientSocket].writeBuffer += welcome;
-    std::cout << "New client connected: " << clientSocket << std::endl;
+    std::cout << "New client connected: fd " << clientSocket << std::endl;
     return clientSocket;
 }
 
@@ -151,7 +142,12 @@ int  Server::connectionIrssi(std::map<int, ClientConnection> &clients,
     {
         std::string reply = ":server CAP * LS :\r\n";
         clients[fd].writeBuffer += reply;
-		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
+		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
+		{
+			pollfd &p = *it;
+			if (p.fd == fd)
+				p.events |= POLLOUT;
+		}
         return bytesReceived;
     }
     return 0;
@@ -216,9 +212,70 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     std::cout << "Broadcast OK: " << ircMsg;
 }
+static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
+{
+	//to do
+	(void) clients;
+	(void) nick;
+	return (SUCCESS);
+}
+
+static int	verifNickname( std::string &nick )
+{
+	//to do
+	(void) nick;
+	return (SUCCESS);
+}
+
+void	Server::handleRegistration( Message &msg, int fd )
+{
+	switch (msg.command) {
+	case NICK:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), this->fds);
+		else if (verifNickname(msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), this->fds);
+		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
+			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), this->fds);
+		} else {
+			this->clients[fd].username = msg.params[0].value;
+			this->clients[fd].hasNick = true;
+		}
+		break;
+	case USER:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), this->fds);
+		else {
+			this->clients[fd].name = msg.params.back().value;
+			this->clients[fd].hasUser = true;
+		}
+		break;
+	case PASS:
+		if (msg.howManyParam == 0)
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("PASS"), this->fds);
+		else if (this->clients[fd].isRegistered)
+			RPL::sendRPL(this->clients[fd], RPL::errAlreadyRegistred(), this->fds);
+		else {
+			this->clients[fd].connectionPass = msg.params[0].value;
+			this->clients[fd].hasPass = true;
+		}
+		break;
+	}
+	if (this->clients[fd].hasNick && this->clients[fd].hasUser && this->clients[fd].hasPass)
+	{
+		std::cout << "REGISTRATION OK :" << std::endl;
+		std::cout << "Client nickname : " << this->clients[fd].username << std::endl;
+		std::cout << "Client username : " << this->clients[fd].name << std::endl;
+		std::cout << "Client password : " << this->clients[fd].connectionPass << std::endl;
+		this->clients[fd].isRegistered = true;
+		RPL::sendRPL(this->clients[fd], RPL::rplWelcome(this->clients[fd].username), this->fds);
+	}
+}
 
 int Server::handleClientMessage(int fd)
 {
+    char buffer[2048];
+    int fd = fds[index].fd;
     char buffer[2048];
     int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
     if (bytesReceived <= 0)
@@ -228,40 +285,20 @@ int Server::handleClientMessage(int fd)
         clients.erase(fd);
         return -1;
     }
-    std::string msg(buffer, bytesReceived);
-	Message		parsedMsg(buffer, bytesReceived);
-    msg = trimCRLF(msg);
-    std::cout << "Raw message without \\r somehow ? : " << msg << std::endl;
-    if (connectionIrssi(clients, msg, fd) == bytesReceived)
-        return bytesReceived;
-    if (msg.rfind("JOIN ", 0) == 0) {
-        return joinChannel(clients, msg, fd, channels);
+	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
+	pos = this->clients[fd].readBuffer.find("\r\n");
+	while (pos != std::string::npos)
+	{
+		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
+		this->clients[fd].readBuffer.erase(0, pos + 2);
+		Message	msg(line);
+		std::cout << msg << std::endl;
+		if (clients[fd].isRegistered == true)
+			handleClientMessage(msg, fd);
+		else 
+			handleRegistration(msg, fd);
+		pos = this->clients[fd].readBuffer.find("\r\n");
 	}
-	if (operatorCommand(clients, parsedMsg, fd, channels) == SUCCESS)
-		return bytesReceived;
-    if (msg.rfind("PRIVMSG ", 0) == 0)
-    {
-        size_t colon = msg.find(" :");
-        if (colon != std::string::npos)
-        {
-            std::string content = trimCRLF(msg.substr(colon + 2));
-            if (content.length() > 510)
-                content = content.substr(0, 512);
-            broadcastingMessage(clients, content, "PRIVMSG", fd);
-        }
-    }
-    // Log raw incoming data, for test only, but i'll keep it for push, always useful
-    std::cout << "\n--- RAW MESSAGE RECEIVED FROM FD " 
-            << fd << " ---\n";
-    for (int i = 0; i < bytesReceived; i++)
-    {
-        unsigned char c = buffer[i];
-        if (c == '\r') std::cout << "\\r";
-        else if (c == '\n') std::cout << "\\n";
-        else std::cout << c;
-    }
-    std::cout << "\n-------------------------------------\n\n";
-    return bytesReceived;
 }
 
 void Server::run()
@@ -286,7 +323,7 @@ void Server::run()
             }
             if (events[i].events & EPOLLIN)
             {
-                handleClientMessage(fd);
+                callRecv(fds[i].fd, fd);
             }
             if (events[i].events & EPOLLOUT)
             {

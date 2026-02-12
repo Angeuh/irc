@@ -2,7 +2,8 @@
 
 Channel::Channel() {}
 
-Channel::Channel(const std::string & n, int user) : name(n), topic(""), isInviteOnly(false) {
+// isInviteOnly(false) 
+Channel::Channel(const std::string & n, int user) : name(n), topic("") {
 	this->users.insert(user);
 	this->operators.insert(user);
 }
@@ -50,8 +51,8 @@ int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
 	(void) fd;
 	// if (this->isOperator(fd) == false && this->isInviteOnly == true) 
 		// RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
-	if (this->isInviteOnly)
-		std::cout << "ok\n";
+	// if (this->isInviteOnly)
+	// 	std::cout << "ok\n";
 	return (1);
 }
 
@@ -59,20 +60,17 @@ int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
 int		Channel::topicCmd( Message &msg, std::map<int, ClientConnection> &clients,
 	int fd)
 {
-	(void) msg;
-	(void) clients;
-	(void) fd;
-	// if (msg.hasParam() == false) {
-	// 	RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, param), fds);
-	// } else if (this->isOperator(fd) == false) {
-	// 	RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
-	// } else if (param.empty()) {
-	// 	this->topic = "";
-	// 	RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, param), fds);
-	// } else {
-	// 	this->topic = param;
-	// 	broadcastingMessage(clients, param, "TOPIC", fd, fds);
-	// }
+	if (msg.howManyParam == 0) {
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), fds);
+	} else if (this->isOperator(fd) == false) {
+		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
+	} else if (msg.params[1].value.empty()) {
+		this->topic = "";
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), fds);
+	} else {
+		this->topic = msg.params[1].value;
+		broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd, fds);
+	}
 	return (1);
 }
 

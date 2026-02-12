@@ -24,12 +24,28 @@ typedef struct s_token
 	std::string	value;
 }	t_token;
 
+enum actions
+{
+	CAP,
+	NICK,
+	USER,
+	PASS,
+	JOIN,
+	TOPIC,
+	MODE,
+	INVITE,
+	KICK,
+	PRIVMSG,
+	DEFAULT
+};
+
 // irc message : [':'prefix] <command> [parameters (max 15)] <CR-LF>
 // not more than 512 char including CR-LF
 class Message
 {
 	private:
-		void		parseMessage( void );
+		void	parseMessage( void );
+		void	chooseCommand( void );
 	
 	public:
 		Message( void );
@@ -39,9 +55,10 @@ class Message
 
 		std::string				rawMessage;
 		t_token					prefix;
-		t_token					command;
+		t_token					commandToken;
+		int						command;
 		std::vector<t_token>	params;
-		bool					hasParam;
+		int						howManyParam;
 		bool					hasTrailing;
 
 		class ParsingError : public std::exception {

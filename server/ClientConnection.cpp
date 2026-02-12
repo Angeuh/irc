@@ -1,5 +1,11 @@
 #include "../includes/ClientConnection.hpp"
 
-ClientConnection::ClientConnection() : loggedIn(false) {}
+ClientConnection::ClientConnection() : 
+	    fd(0),
+		hasNick(false),
+		hasUser(false),
+		hasPass(false),
+		isRegistered(false)
+{}
 
 ClientConnection::~ClientConnection() {}

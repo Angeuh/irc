@@ -10,18 +10,23 @@
 
 class Channel;
 class ClientConnection;
+class Message;
 
 class Server
 {
     private:
-        int serverSocket;
+        int								serverSocket;
         int epfd; // epoll fd
+        std::map<int, ClientConnection>	clients;
+		std::map<std::string, Channel>	channels;
+        std::string						password;
+	
+        int     acceptNewClient();
+        void	callRecv( int, int );
+		void	handleClientMessage( Message &, int );
+        //int handleClientMessage(int fd);
+		void	handleRegistration( Message &, int );
 
-        std::map<int, ClientConnection> clients;
-        std::map<std::string, Channel> channels;
-
-        int acceptNewClient();
-        int handleClientMessage(int fd);
         void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
@@ -39,9 +44,8 @@ class Server
     public:
         Server();
         ~Server();
-        Server(int port);
-
-        void run();
+        Server( int, std::string );
+        void run(); // to start the server, somehow ?
 
         class PollError : public std::exception {
         public:

@@ -4,26 +4,80 @@ Message::Message() {}
 
 Message::Message( const std::string& msg ) :
 	rawMessage(msg),
-	hasParam(false),
+	howManyParam(0),
 	hasTrailing(false)
 {
 	this->prefix.value = "";
-	this->command.value = "";
+	this->commandToken.value = "";
 	this->parseMessage();
+	this->chooseCommand();
 }
 
 Message::Message(const char *buf, int bytesReceived) : 
 	rawMessage(std::string(buf, bytesReceived)),
-	hasParam(false),
+	howManyParam(0),
 	hasTrailing(false)
 {
 	std::cout << rawMessage << std::endl;
 	this->prefix.value = "";
-	this->command.value = "";
+	this->commandToken.value = "";
 	this->parseMessage();
+	this->chooseCommand();
 }
 
 Message::~Message() {}
+
+void	Message::chooseCommand( void )
+{
+	std::map<std::string, int>	commands;
+	
+	commands["CAP"] = CAP;
+	commands["NICK"] = NICK;
+	commands["USER"] = USER;
+	commands["PASS"] = PASS;
+	commands["JOIN"] = JOIN;
+	commands["TOPIC"] = TOPIC;
+	commands["MODE"] = MODE;
+	commands["INVITE"] = INVITE;
+	commands["KICK"] = KICK;
+	commands["PRIVMSG"] = PRIVMSG;
+	commands["DEFAULT"] = DEFAULT;
+
+	switch (commands[this->commandToken.value]) {
+	case CAP:
+		this->command = CAP;
+		break;
+	case NICK:
+		this->command = NICK;	
+		break;
+	case USER:
+		this->command = USER;
+		break;
+	case PASS:
+		this->command = PASS;
+		break;
+	case JOIN:
+		this->command = JOIN;
+		break;
+	case TOPIC:
+		this->command = TOPIC;
+		break;
+	case MODE:
+		this->command = MODE;
+		break;
+	case INVITE:
+		this->command = INVITE;
+		break;
+	case KICK:
+		this->command = KICK;
+		break;
+	case PRIVMSG:
+		this->command = PRIVMSG;
+		break;
+	default:
+		this->command = DEFAULT;
+	}
+}
 
 static void	skipSpaces(std::string &msg, unsigned long &i)
 {
@@ -77,7 +131,7 @@ void	Message::parseMessage()
 			break;
 		case COMMAND:
 			readUntilDelimiter(this->rawMessage, i, "\r ");
-			makeToken(tokenStart, i, this->command, this->rawMessage);
+			makeToken(tokenStart, i, this->commandToken, this->rawMessage);
 			if (this->rawMessage[i] == '\r') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
@@ -94,7 +148,7 @@ void	Message::parseMessage()
 			readUntilDelimiter(this->rawMessage, i, " :\r");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
-			this->hasParam = true;
+			this->howManyParam++;
 			if (this->rawMessage[i] == '\r') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
@@ -111,8 +165,10 @@ void	Message::parseMessage()
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
 			this->hasTrailing = true;
+			this->howManyParam++;
 			if (token.value.empty()) {
 				this->params.pop_back();
+				this->howManyParam--;
 				this->hasTrailing = false;
 			}
 			state = END;
@@ -140,7 +196,7 @@ std::ostream	&operator<<(std::ostream &os, Message &msg)
 	os << std::endl << "-- MESSAGE --" << std::endl;
 	os << "RAW : " << msg.rawMessage;
 	os << "PREFIX : " << msg.prefix.value << std::endl;
-	os << "COMMAND : " << msg.command.value << std::endl;
+	os << "COMMAND : " << msg.commandToken.value << std::endl;
 	os << "PARAMS : " << std::endl;
 	int	i = 0;
 	for (std::vector<t_token>::iterator it = msg.params.begin(); it != msg.params.end(); ++it)
