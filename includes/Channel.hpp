@@ -27,10 +27,11 @@ class Channel
 		void	insertUser(int);
 		bool	isOperator( int );
 		bool	isOnChannel( int );
+		bool	get_isInviteOnly();
 
 		int		kickCmd( Message & );
-		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
-		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, std::vector<pollfd> & );
+		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
+		int		topicCmd( Message &, std::map<int, ClientConnection> &, int);
 		int		modeCmd( Message & );
 };
 

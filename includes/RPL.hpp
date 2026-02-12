@@ -31,6 +31,7 @@ class RPL
 		static std::string	errNotOnChannel( const std::string & );
 		static std::string	errChanOpPrivsNeeded( const std::string &, const std::string & );
 		static std::string	errNoChanModes( const std::string & );
+		static std::string	errInviteOnlyChan( const std::string &, const std::string & );
 
 		static void			sendRPL( ClientConnection &client, const std::string &content, std::vector<pollfd> &fds );
 };
