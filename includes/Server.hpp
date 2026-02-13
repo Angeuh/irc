@@ -23,29 +23,28 @@ class Server
 	
         int     acceptNewClient();
         void	callRecv( int, int );
-		void	handleClientMessage( Message &, int );
+		int	handleClientMessage( Message &, int );
         //int handleClientMessage(int fd);
 		void	handleRegistration( Message &, int );
 
-        void broadcastingMessage(std::map<int, ClientConnection> &clients,
-                                const std::string &content,
-								const std::string &command,
-                                int fd);
         int connectionIrssi(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd);
         int joinChannel(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd,
                             std::map<std::string, Channel> &channels);
 
-        void addToEpoll(int fd, uint32_t events);
-        void modifyEpoll(int fd, uint32_t events);
-        void removeFromEpoll(int fd);
-
     public:
         Server();
         ~Server();
         Server( int, std::string );
         void run(); // to start the server, somehow ?
+        void addToEpoll(int fd, uint32_t events);
+        void modifyEpoll(int fd, uint32_t events);
+        void removeFromEpoll(int fd);
+        void broadcastingMessage(std::map<int, ClientConnection> &clients,
+                                const std::string &content,
+								const std::string &command,
+                                int fd);
 
         class PollError : public std::exception {
         public:
@@ -56,7 +55,6 @@ class Server
 void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
-                                int fd,
-                                std::vector<pollfd> &fds);
+                                int fd);
 
 #endif

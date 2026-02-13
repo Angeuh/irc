@@ -9,6 +9,7 @@
 
 // /connect DALNET + /RAWLOG OPEN debug.log for debug logs on official server (to test display)
 class ClientConnection;
+class Server;
 
 class RPL
 {
@@ -38,7 +39,7 @@ class RPL
 		static std::string	errNickNameInUse( void );
 		static std::string	errAlreadyRegistred( void );
 
-		static void			sendRPL( ClientConnection &client, const std::string &content, std::vector<pollfd> &fds );
+		static void			sendRPL( ClientConnection &client, const std::string &content, Server &server);
 };
 
 #endif

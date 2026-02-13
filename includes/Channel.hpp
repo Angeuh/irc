@@ -9,6 +9,7 @@
 
 class ClientConnection;
 class Message;
+class Server;
 
 class Channel
 {
@@ -17,7 +18,7 @@ class Channel
 		std::string		topic;
         std::set<int>	users;
         std::set<int>	operators;
-		// bool			isInviteOnly;
+		bool			isInviteOnly;
 
     public:
         Channel( void );
@@ -31,7 +32,7 @@ class Channel
 
 		int		kickCmd( Message & );
 		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
-		int		topicCmd( Message &, std::map<int, ClientConnection> &, int);
+		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
 		int		modeCmd( Message & );
 };
 
