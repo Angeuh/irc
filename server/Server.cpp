@@ -113,69 +113,6 @@ int Server::joinChannel(std::map<int, ClientConnection> &clients,
     return bytesReceived;
 }
 
-
-int  Server::connectionIrssi(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd)
-{
-    int bytesReceived = msg.size();
-    if (msg.rfind("NICK ", 0) == 0)
-    {
-        std::string nick = msg.substr(5);
-       while (!nick.empty() &&
-       (nick[nick.size() - 1] == '\r' || nick[nick.size() - 1] == '\n'))
-            nick.erase(nick.size() - 1);
-        clients[fd].username = nick;
-        std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
-        clients[fd].writeBuffer += welcome;
-		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
-        return bytesReceived;
-    }
-
-    if (msg.rfind("USER ", 0) == 0)
-{
-    size_t size = msg.find(":");
-    if (size != std::string::npos)
-        clients[fd].name = msg.substr(size + 1);
-    return bytesReceived;
-}
-    if (msg.find("CAP LS") == 0)
-    {
-        std::string reply = ":server CAP * LS :\r\n";
-        clients[fd].writeBuffer += reply;
-		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
-        return bytesReceived;
-    }
-    return 0;
-}
-
-/* static int  operatorCommand(std::map<int, ClientConnection> &clients,
-    Message &msg, int fd, std::map<std::string, Channel> &channels)
-{
-	Channel	&channel = channels[clients[fd].currentChannel];
-
-	if (msg.command.value == "KICK")
-	{
-		channel.kickCmd(msg);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "INVITE")
-	{
-		channel.inviteCmd(msg, clients, fd);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "TOPIC")
-	{
-		channel.topicCmd(msg, clients, fd);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "MODE")
-	{
-		channel.modeCmd(msg);
-		return (SUCCESS);
-	}
-	return (FAILURE);
-} */
-
 void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
@@ -222,6 +159,7 @@ static int	verifNickname( std::string &nick )
 	return (SUCCESS);
 }
 
+
 void	Server::handleRegistration( Message &msg, int fd )
 {
 	switch (msg.command) {
@@ -267,39 +205,28 @@ void	Server::handleRegistration( Message &msg, int fd )
 	}
 }
 
-int Server::handleClientMessage(Message &msg, int fd)
+void	Server::handleClientMessage(Message &msg, int fd)
 {
-    (void) msg;
-    char buffer[2048];
-    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-    size_t	pos;
-    if (bytesReceived <= 0)
-    {
-        removeFromEpoll(fd);
-        close(fd);
-        clients.erase(fd);
-        return -1;
-    }
-	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
-	pos = this->clients[fd].readBuffer.find("\r\n");
-	while (pos != std::string::npos)
-	{
-		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
-		this->clients[fd].readBuffer.erase(0, pos + 2);
-		Message	msg(line);
-		std::cout << msg << std::endl;
-		if (clients[fd].isRegistered == true)
-			handleClientMessage(msg, fd);
-		else 
-			handleRegistration(msg, fd);
-		pos = this->clients[fd].readBuffer.find("\r\n");
+	Channel		channel = this->channels[clients[fd].currentChannel];
+
+	switch (msg.command) {
+	case JOIN:
+		joinChannel(this->clients, msg.rawMessage, fd, this->fds, this->channels);
+	case TOPIC:
+		channel.topicCmd(msg, this->clients, fd, this->fds);
+	// case MODE:
+	// 	channel.modeCmd(msg);
+	// case INVITE:
+	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
+	// case KICK:
+	// 	channel.kickCmd(msg);
+	case PRIVMSG:
+		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd, fds);
 	}
-    return 0;
 }
 
-void Server::callRecv(int fd, int index)
+void Server::callRecv(int fd)
 {
-    (void) index;
 	char	buffer[4096];
     int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
 	size_t	pos;

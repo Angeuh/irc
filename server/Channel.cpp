@@ -13,7 +13,7 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
-bool	Channel::get_isInviteOnly()
+bool	Channel::getIsInviteOnly()
 {
 	return (this->isInviteOnly);
 }
