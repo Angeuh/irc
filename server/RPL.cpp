@@ -78,16 +78,10 @@ std::string	RPL::errAlreadyRegistred( void )
 // - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
 // - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
 
-void RPL::sendRPL(ClientConnection &client, const std::string &content, std::vector<pollfd> &fds)
+void RPL::sendRPL(ClientConnection &client, const std::string &content, Server &server)
 {
     client.writeBuffer += content;
-    std::vector<pollfd>::iterator pit = fds.begin();
-    for (; pit != fds.end(); ++pit)
-    {
-    	if (pit->fd == client.fd)
-			break;
-	}
-	pit->events |= POLLOUT;
+    server.modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
     std::cout << "[RPL/ERR] sender=" << client.username
         << " channel='" << client.currentChannel
         << "' msg='" << content << "'\n";

@@ -142,18 +142,13 @@ int  Server::connectionIrssi(std::map<int, ClientConnection> &clients,
     {
         std::string reply = ":server CAP * LS :\r\n";
         clients[fd].writeBuffer += reply;
-		for (std::vector<pollfd>::iterator it = fds.begin(); it != fds.end(); ++it)
-		{
-			pollfd &p = *it;
-			if (p.fd == fd)
-				p.events |= POLLOUT;
-		}
+		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
         return bytesReceived;
     }
     return 0;
 }
 
-static int  operatorCommand(std::map<int, ClientConnection> &clients,
+/* static int  operatorCommand(std::map<int, ClientConnection> &clients,
     Message &msg, int fd, std::map<std::string, Channel> &channels)
 {
 	Channel	&channel = channels[clients[fd].currentChannel];
@@ -179,7 +174,7 @@ static int  operatorCommand(std::map<int, ClientConnection> &clients,
 		return (SUCCESS);
 	}
 	return (FAILURE);
-}
+} */
 
 void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
@@ -232,11 +227,11 @@ void	Server::handleRegistration( Message &msg, int fd )
 	switch (msg.command) {
 	case NICK:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), *this);
 		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), *this);
 		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), *this);
 		} else {
 			this->clients[fd].username = msg.params[0].value;
 			this->clients[fd].hasNick = true;
@@ -244,7 +239,7 @@ void	Server::handleRegistration( Message &msg, int fd )
 		break;
 	case USER:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), *this);
 		else {
 			this->clients[fd].name = msg.params.back().value;
 			this->clients[fd].hasUser = true;
@@ -252,9 +247,9 @@ void	Server::handleRegistration( Message &msg, int fd )
 		break;
 	case PASS:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("PASS"), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("PASS"), *this);
 		else if (this->clients[fd].isRegistered)
-			RPL::sendRPL(this->clients[fd], RPL::errAlreadyRegistred(), this->fds);
+			RPL::sendRPL(this->clients[fd], RPL::errAlreadyRegistred(), *this);
 		else {
 			this->clients[fd].connectionPass = msg.params[0].value;
 			this->clients[fd].hasPass = true;
@@ -268,22 +263,53 @@ void	Server::handleRegistration( Message &msg, int fd )
 		std::cout << "Client username : " << this->clients[fd].name << std::endl;
 		std::cout << "Client password : " << this->clients[fd].connectionPass << std::endl;
 		this->clients[fd].isRegistered = true;
-		RPL::sendRPL(this->clients[fd], RPL::rplWelcome(this->clients[fd].username), this->fds);
+		RPL::sendRPL(this->clients[fd], RPL::rplWelcome(this->clients[fd].username), *this);
 	}
 }
 
-int Server::handleClientMessage(int fd)
+int Server::handleClientMessage(Message &msg, int fd)
 {
-    char buffer[2048];
-    int fd = fds[index].fd;
+    (void) msg;
     char buffer[2048];
     int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+    size_t	pos;
     if (bytesReceived <= 0)
     {
         removeFromEpoll(fd);
         close(fd);
         clients.erase(fd);
         return -1;
+    }
+	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
+	pos = this->clients[fd].readBuffer.find("\r\n");
+	while (pos != std::string::npos)
+	{
+		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
+		this->clients[fd].readBuffer.erase(0, pos + 2);
+		Message	msg(line);
+		std::cout << msg << std::endl;
+		if (clients[fd].isRegistered == true)
+			handleClientMessage(msg, fd);
+		else 
+			handleRegistration(msg, fd);
+		pos = this->clients[fd].readBuffer.find("\r\n");
+	}
+    return 0;
+}
+
+void Server::callRecv(int fd, int index)
+{
+    (void) index;
+	char	buffer[4096];
+    int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	size_t	pos;
+
+    if (bytesReceived <= 0)
+    {
+        removeFromEpoll(fd);
+        close(fd);
+        clients.erase(fd);
+        return ;
     }
 	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
 	pos = this->clients[fd].readBuffer.find("\r\n");
@@ -323,7 +349,8 @@ void Server::run()
             }
             if (events[i].events & EPOLLIN)
             {
-                callRecv(fds[i].fd, fd);
+                int fd_epoll = events[i].data.fd;
+                callRecv(fd_epoll, fd);
             }
             if (events[i].events & EPOLLOUT)
             {

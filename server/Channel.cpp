@@ -58,18 +58,18 @@ int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
 
 // format : TOPIC [param]
 int		Channel::topicCmd( Message &msg, std::map<int, ClientConnection> &clients,
-	int fd)
+	int fd, Server &server)
 {
 	if (msg.howManyParam == 0) {
-		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), fds);
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), server);
 	} else if (this->isOperator(fd) == false) {
-		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
+		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), server);
 	} else if (msg.params[1].value.empty()) {
 		this->topic = "";
-		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), fds);
+		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), server);
 	} else {
 		this->topic = msg.params[1].value;
-		broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd, fds);
+		server.broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd);
 	}
 	return (1);
 }
