@@ -28,7 +28,7 @@ class Channel
 		void	insertUser(int);
 		bool	isOperator( int );
 		bool	isOnChannel( int );
-		bool	get_isInviteOnly();
+		bool	getIsInviteOnly();
 
 		int		kickCmd( Message & );
 		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);

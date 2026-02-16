@@ -127,69 +127,6 @@ int Server::joinChannel(std::map<int, ClientConnection> &clients,
     return bytesReceived;
 }
 
-
-int  Server::connectionIrssi(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd)
-{
-    int bytesReceived = msg.size();
-    if (msg.rfind("NICK ", 0) == 0)
-    {
-        std::string nick = msg.substr(5);
-       while (!nick.empty() &&
-       (nick[nick.size() - 1] == '\r' || nick[nick.size() - 1] == '\n'))
-            nick.erase(nick.size() - 1);
-        clients[fd].username = nick;
-        std::string welcome = ":server 001 " + clients[fd].username + " :Welcome to IRC\r\n";
-        clients[fd].writeBuffer += welcome;
-		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
-        return bytesReceived;
-    }
-
-    if (msg.rfind("USER ", 0) == 0)
-{
-    size_t size = msg.find(":");
-    if (size != std::string::npos)
-        clients[fd].name = msg.substr(size + 1);
-    return bytesReceived;
-}
-    if (msg.find("CAP LS") == 0)
-    {
-        std::string reply = ":server CAP * LS :\r\n";
-        clients[fd].writeBuffer += reply;
-		this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
-        return bytesReceived;
-    }
-    return 0;
-}
-
-/* static int  operatorCommand(std::map<int, ClientConnection> &clients,
-    Message &msg, int fd, std::map<std::string, Channel> &channels)
-{
-	Channel	&channel = channels[clients[fd].currentChannel];
-
-	if (msg.command.value == "KICK")
-	{
-		channel.kickCmd(msg);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "INVITE")
-	{
-		channel.inviteCmd(msg, clients, fd);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "TOPIC")
-	{
-		channel.topicCmd(msg, clients, fd);
-		return (SUCCESS);
-	}
-	if (msg.command.value == "MODE")
-	{
-		channel.modeCmd(msg);
-		return (SUCCESS);
-	}
-	return (FAILURE);
-} */
-
 void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
@@ -240,6 +177,7 @@ static int	verifNickname( std::string &nick )
 	return (SUCCESS);
 }
 
+
 void	Server::handleRegistration( Message &msg, int fd )
 {
 	switch (msg.command) {
@@ -285,7 +223,7 @@ void	Server::handleRegistration( Message &msg, int fd )
 	}
 }
 
-void Server::handleClientMessage( Message &msg, int fd )    
+void	Server::handleClientMessage(Message &msg, int fd)
 {
 	Channel		channel = this->channels[clients[fd].currentChannel];
 
@@ -305,6 +243,7 @@ void Server::handleClientMessage( Message &msg, int fd )
 	}
 }
 
+void Server::callRecv(int fd)
 void Server::callRecv(int fd)
 {
 	char	buffer[4096];

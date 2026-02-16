@@ -18,7 +18,7 @@ class Server
 {
     private:
         int								serverSocket;
-        int epfd; // epoll fd
+        int 							epfd; // epoll fd
         std::map<int, ClientConnection>	clients;
 		std::map<std::string, Channel>	channels;
         std::string						password;
@@ -27,12 +27,9 @@ class Server
         int     acceptNewClient();
         void	callRecv( int );
 		void	handleClientMessage( Message &, int );
-        //int handleClientMessage(int fd);
 		void	handleRegistration( Message &, int );
         void    closeFd();
 
-        int connectionIrssi(std::map<int, ClientConnection> &clients,
-                            std::string &msg, int fd);
         int joinChannel(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd,
                             std::map<std::string, Channel> &channels);
@@ -43,9 +40,9 @@ class Server
         ~Server();
         Server( int, std::string );
         void run(); // to start the server, somehow ?
-        void addToEpoll(int fd, uint32_t events);
-        void modifyEpoll(int fd, uint32_t events);
-        void removeFromEpoll(int fd);
+        void addToEpoll(int fd, uint32_t events);	// pass to private ?
+        void modifyEpoll(int fd, uint32_t events);	// pass to private ?
+        void removeFromEpoll(int fd);				// pass to private ?
         void broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
