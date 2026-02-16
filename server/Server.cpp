@@ -1,17 +1,24 @@
 #include "../includes/Server.hpp"
 
-Server::Server() {}
+bool Server::Signal = false; 
+
+Server::Server()
+{
+    Signal = false;
+}
 
 Server::~Server()
 {
     close(serverSocket);
     close(epfd);
+    
     std::cout << "Server Closed" << std::endl;
 }
 
 Server::Server(int port, std::string pass) :
 	password(pass)
 {
+    Signal = false;
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
     {
@@ -29,12 +36,18 @@ Server::Server(int port, std::string pass) :
     {
         throw std::runtime_error("Bind failed");
     }
-    if (listen(serverSocket, 5) < 0)
+    if (listen(serverSocket, 128) < 0)
     {
         throw std::runtime_error("Listen failed");
     }
     addToEpoll(serverSocket, EPOLLIN);
     std::cout << "Server listening on port " << port << std::endl;
+}
+void Server::SignalHandler(int signum)
+{
+	(void)signum;
+	std::cout << std::endl << "Signal Received!" << std::endl;
+	Signal = true;
 }
 
 char const *Server::PollError::what() const throw()
@@ -103,7 +116,7 @@ int Server::joinChannel(std::map<int, ClientConnection> &clients,
         if (c.currentChannel == channel)
         {
             c.writeBuffer += joinMsg;
-            this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
+            this->modifyEpoll(c.fd, EPOLLIN | EPOLLOUT);
         }
     }
 	if (channels.find(channel) == channels.end())
@@ -197,6 +210,10 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
             (!skipSender || client.fd != fd))
         {
             client.writeBuffer += ircMsg;
+            if (ircMsg.size() > 512) 
+            {
+                ircMsg = ircMsg.substr(0, 512);
+            }
             this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
         }
         std::cout << "[BROADCAST] sender=" << sender.username
@@ -267,34 +284,24 @@ void	Server::handleRegistration( Message &msg, int fd )
 	}
 }
 
-int Server::handleClientMessage(Message &msg, int fd)
+void Server::handleClientMessage( Message &msg, int fd )    
 {
-    (void) msg;
-    char buffer[2048];
-    int bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-    size_t	pos;
-    if (bytesReceived <= 0)
-    {
-        removeFromEpoll(fd);
-        close(fd);
-        clients.erase(fd);
-        return -1;
-    }
-	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
-	pos = this->clients[fd].readBuffer.find("\r\n");
-	while (pos != std::string::npos)
-	{
-		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
-		this->clients[fd].readBuffer.erase(0, pos + 2);
-		Message	msg(line);
-		std::cout << msg << std::endl;
-		if (clients[fd].isRegistered == true)
-			handleClientMessage(msg, fd);
-		else 
-			handleRegistration(msg, fd);
-		pos = this->clients[fd].readBuffer.find("\r\n");
+	Channel		channel = this->channels[clients[fd].currentChannel];
+
+	switch (msg.command) {
+	case JOIN:
+		joinChannel(this->clients, msg.rawMessage, fd, this->channels);
+	case TOPIC:
+		channel.topicCmd(msg, this->clients, fd, *this);
+	// case MODE:
+	// 	channel.modeCmd(msg);
+	// case INVITE:
+	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
+	// case KICK:
+	// 	channel.kickCmd(msg);
+	case PRIVMSG:
+		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
 	}
-    return 0;
 }
 
 void Server::callRecv(int fd, int index)
@@ -337,7 +344,11 @@ void Server::run()
         int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
 
         if (n < 0)
+        {
+            if (errno == EINTR)
+                return;
             throw PollError();
+        }
 
         for (int i = 0; i < n; i++)
         {

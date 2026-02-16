@@ -9,6 +9,7 @@
 # include "RPL.hpp"
 # include "Message.hpp"
 
+
 /* int main() {
     // Create listening socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -108,6 +109,8 @@ int main(int ac, char *av[])
     try
     {
         Server server(socket, av[2]);
+        signal(SIGINT, Server::SignalHandler); 
+		signal(SIGQUIT, Server::SignalHandler);
         server.run();
     }
     catch (const std::exception &e)
