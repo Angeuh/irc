@@ -6,6 +6,8 @@
 # include "Channel.hpp"
 # include "RPL.hpp"
 # include "Message.hpp"
+# include "errno.h"
+# include "signal.h"
 # define SERVERNAME "localhost"
 
 class Channel;
@@ -20,19 +22,19 @@ class Server
         std::map<int, ClientConnection>	clients;
 		std::map<std::string, Channel>	channels;
         std::string						password;
+
 	
         int     acceptNewClient();
-        void	callRecv( int, int );
-		int		handleClientMessage( Message &, int );
+        void	callRecv( int );
+		void	handleClientMessage( Message &, int );
 		void	handleRegistration( Message &, int );
 
-        int connectionIrssi(std::map<int, ClientConnection> &clients,
-                            std::string &msg, int fd);
         int joinChannel(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd,
                             std::map<std::string, Channel> &channels);
 
     public:
+        static bool             Signal;
         Server();
         ~Server();
         Server( int, std::string );
@@ -45,6 +47,7 @@ class Server
 								const std::string &command,
                                 int fd);
 
+        static void SignalHandler(int signum);
         class PollError : public std::exception {
         public:
             const char* what() const throw();

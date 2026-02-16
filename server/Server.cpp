@@ -1,17 +1,24 @@
 #include "../includes/Server.hpp"
 
-Server::Server() {}
+bool Server::Signal = false; 
+
+Server::Server()
+{
+    Signal = false;
+}
 
 Server::~Server()
 {
     close(serverSocket);
     close(epfd);
+    
     std::cout << "Server Closed" << std::endl;
 }
 
 Server::Server(int port, std::string pass) :
 	password(pass)
 {
+    Signal = false;
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
     {
@@ -29,12 +36,18 @@ Server::Server(int port, std::string pass) :
     {
         throw std::runtime_error("Bind failed");
     }
-    if (listen(serverSocket, 5) < 0)
+    if (listen(serverSocket, 128) < 0)
     {
         throw std::runtime_error("Listen failed");
     }
     addToEpoll(serverSocket, EPOLLIN);
     std::cout << "Server listening on port " << port << std::endl;
+}
+void Server::SignalHandler(int signum)
+{
+	(void)signum;
+	std::cout << std::endl << "Signal Received!" << std::endl;
+	Signal = true;
 }
 
 char const *Server::PollError::what() const throw()
@@ -103,7 +116,7 @@ int Server::joinChannel(std::map<int, ClientConnection> &clients,
         if (c.currentChannel == channel)
         {
             c.writeBuffer += joinMsg;
-            this->modifyEpoll(fd, EPOLLIN | EPOLLOUT);
+            this->modifyEpoll(c.fd, EPOLLIN | EPOLLOUT);
         }
     }
 	if (channels.find(channel) == channels.end())
@@ -134,6 +147,10 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
             (!skipSender || client.fd != fd))
         {
             client.writeBuffer += ircMsg;
+            if (ircMsg.size() > 512) 
+            {
+                ircMsg = ircMsg.substr(0, 512);
+            }
             this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
         }
         std::cout << "[BROADCAST] sender=" << sender.username
@@ -211,9 +228,9 @@ void	Server::handleClientMessage(Message &msg, int fd)
 
 	switch (msg.command) {
 	case JOIN:
-		joinChannel(this->clients, msg.rawMessage, fd, this->fds, this->channels);
+		joinChannel(this->clients, msg.rawMessage, fd, this->channels);
 	case TOPIC:
-		channel.topicCmd(msg, this->clients, fd, this->fds);
+		channel.topicCmd(msg, this->clients, fd, *this);
 	// case MODE:
 	// 	channel.modeCmd(msg);
 	// case INVITE:
@@ -221,7 +238,7 @@ void	Server::handleClientMessage(Message &msg, int fd)
 	// case KICK:
 	// 	channel.kickCmd(msg);
 	case PRIVMSG:
-		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd, fds);
+		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
 	}
 }
 
@@ -264,7 +281,11 @@ void Server::run()
         int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
 
         if (n < 0)
+        {
+            if (errno == EINTR)
+                return;
             throw PollError();
+        }
 
         for (int i = 0; i < n; i++)
         {
@@ -277,7 +298,7 @@ void Server::run()
             if (events[i].events & EPOLLIN)
             {
                 int fd_epoll = events[i].data.fd;
-                callRecv(fd_epoll, fd);
+                callRecv(fd_epoll);
             }
             if (events[i].events & EPOLLOUT)
             {
