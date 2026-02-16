@@ -46,6 +46,7 @@ Server::Server(int port, std::string pass) :
 void Server::SignalHandler(int signum)
 {
 	(void)signum;
+    
 	std::cout << std::endl << "Signal Received!" << std::endl;
 	Signal = true;
 }
@@ -304,9 +305,8 @@ void Server::handleClientMessage( Message &msg, int fd )
 	}
 }
 
-void Server::callRecv(int fd, int index)
+void Server::callRecv(int fd)
 {
-    (void) index;
 	char	buffer[4096];
     int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
 	size_t	pos;
@@ -334,6 +334,19 @@ void Server::callRecv(int fd, int index)
 	}
 }
 
+void    Server::closeFd()
+{
+
+    for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        close(it->first);
+    }
+    clients.clear();
+    close(serverSocket);
+    close(epfd);
+
+}
+
 void Server::run()
 {
     const int MAX_EVENTS = 64;
@@ -346,7 +359,7 @@ void Server::run()
         if (n < 0)
         {
             if (errno == EINTR)
-                return;
+                break;
             throw PollError();
         }
 
@@ -360,8 +373,7 @@ void Server::run()
             }
             if (events[i].events & EPOLLIN)
             {
-                int fd_epoll = events[i].data.fd;
-                callRecv(fd_epoll, fd);
+                callRecv(fd);
             }
             if (events[i].events & EPOLLOUT)
             {
@@ -384,5 +396,8 @@ void Server::run()
             }
         }
     }
+    std::cout << "Shutting down server..." << std::endl;
+    closeFd();
+    std::cout << "Server Closed" << std::endl;
 }
 
