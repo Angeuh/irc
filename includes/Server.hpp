@@ -20,6 +20,7 @@ class Server
         std::map<int, ClientConnection>	clients;
 		std::map<std::string, Channel>	channels;
         std::string						password;
+        
 	
         int     acceptNewClient();
         void	callRecv( int, int );
