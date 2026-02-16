@@ -74,16 +74,3 @@ std::string	RPL::errAlreadyRegistred( void )
 {
 	return ":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n";
 }
-// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
-// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
-// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
-
-void RPL::sendRPL(ClientConnection &client, const std::string &content, Server &server)
-{
-    client.writeBuffer += content;
-    server.modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
-    std::cout << "[RPL/ERR] sender=" << client.username
-        << " channel='" << client.currentChannel
-        << "' msg='" << content << "'\n";
-    std::cout << "RPL/ERR OK: " << content << std::endl;
-}

@@ -13,12 +13,6 @@ class Server;
 
 class RPL
 {
-    private:
-		std::string		name;
-		std::string		topic;
-        std::set<int>	users;
-        std::set<int>	operators;
-
     public:
         RPL( void );
         ~RPL( void );
@@ -38,8 +32,6 @@ class RPL
 		static std::string	errErroneusNickname( void );
 		static std::string	errNickNameInUse( void );
 		static std::string	errAlreadyRegistred( void );
-
-		static void			sendRPL( ClientConnection &client, const std::string &content, Server &server);
 };
 
 #endif

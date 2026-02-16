@@ -70,67 +70,88 @@ int Server::acceptNewClient()
     return clientSocket;
 }
 
-static std::string trimCRLF(const std::string &s)
+void	Server::joinCmd( Message &msg, ClientConnection &user )
 {
-    size_t start = 0;
-    size_t end = s.size();
-
-    while (start < end && (s[start] == '\r' || s[start] == '\n'))
-        start++;
-    while (end > start && (s[end - 1] == '\r' || s[end - 1] == '\n'))
-        end--;
-
-    return (s.substr(start, end - start));
+	(void) msg;
+	(void) user;
+    // std::string channel = trimCRLF(msg.substr(5));
+    // std::cout << "Requested to join channel: '" << channel << "'\n";
+    // if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
+    //     return -1;
+    // /* if(channel.get_isInviteOnly() == true)
+    // {
+    //     // ERR_INVITEONLYCHAN err : 473
+    //     //           "<channel> :Cannot join channel (+i)"
+    //     std::cerr << "<channel> :Cannot join channel " << channel[0] << std::endl;
+    //     return -1;
+    // } */
+    // std::cout << "[JOIN] fd=" << fd
+    //       << " requested channel: '" << msg << "'\n";
+    // std::cout << "[JOIN] normalized as: '" << channel << "'\n";
+    // if (channel.empty() || channel[0] != '#')
+    //     channel = "#" + channel;
+    // clients[fd].currentChannel = channel;
+    // std::string joinMsg =
+    //     ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
+    // for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+    // {
+    //     ClientConnection &c = it->second;
+    //     if (c.currentChannel == channel)
+    //     {
+    //         c.writeBuffer += joinMsg;
+    //         this->modifyEpoll(c.fd, EPOLLIN | EPOLLOUT);
+    //     }
+    // }
+	// if (channels.find(channel) == channels.end())
+	// 	channels[channel] = Channel(channel, fd);
+	// else
+	// 	channels[channel].insertUser(fd);
 }
 
-int Server::joinChannel(std::map<int, ClientConnection> &clients,
-    std::string &msg, int fd,
-	std::map<std::string, Channel> &channels)
+// format : KICK <channel, ...> <nick, ...> [<reason>]
+// either multiple channels or multiple users
+// reason broadcasted to all users
+void	Server::kickCmd( Message &msg, ClientConnection &user )
 {
-    int bytesReceived = msg.size();
+	(void) msg;
+	(void) user;
+}
 
+// format : INVITE <nickname> <channel>
+void	Server::inviteCmd( Message &msg, ClientConnection &user )
+{
+	(void) msg;
+	(void) user;
+}
 
-    // Extract channel name
-    std::string channel = trimCRLF(msg.substr(5));
-    std::cout << "Requested to join channel: '" << channel << "'\n";
-    if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
-        return -1;
-    /* if(channel.get_isInviteOnly() == true)
-    {
-        // ERR_INVITEONLYCHAN err : 473
-        //           "<channel> :Cannot join channel (+i)"
-        std::cerr << "<channel> :Cannot join channel " << channel[0] << std::endl;
-        return -1;
-    } */
-    std::cout << "[JOIN] fd=" << fd
-          << " requested channel: '" << msg << "'\n";
-    std::cout << "[JOIN] normalized as: '" << channel << "'\n";
-    if (channel.empty() || channel[0] != '#')
-        channel = "#" + channel;
-    clients[fd].currentChannel = channel;
-    std::string joinMsg =
-        ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
-    for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
-    {
-        ClientConnection &c = it->second;
-        if (c.currentChannel == channel)
-        {
-            c.writeBuffer += joinMsg;
-            this->modifyEpoll(c.fd, EPOLLIN | EPOLLOUT);
-        }
-    }
-	if (channels.find(channel) == channels.end())
-		channels[channel] = Channel(channel, fd);
-	else
-		channels[channel].insertUser(fd);
-    return bytesReceived;
+// format : TOPIC [param]
+void	Server::topicCmd( Message &msg, ClientConnection &user )
+{
+	Channel	channel; //to do
+
+	if (msg.howManyParam == 0) {
+		sendRPL(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	// } else if (channel.isOperator(user) == false) {
+		// sendRPL(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+	} else if (msg.params[1].value.empty()) {
+		channel.getTopic() = "";
+		sendRPL(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	} else {
+		channel.getTopic() = msg.params[1].value;
+		// broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd);
+	}
+}
+
+void	Server::modeCmd( Message &msg, ClientConnection &user )
+{
+	(void) msg;
+	(void) user;
 }
 
 void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
                                 const std::string &content,
 								const std::string &command,
-                                int fd
-							)
+                                int fd)
 {
 	bool skipSender = (command == "PRIVMSG");
     ClientConnection &sender = clients[fd];
@@ -161,6 +182,20 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     std::cout << "Broadcast OK: " << ircMsg;
 }
+
+// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
+// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
+// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
+void Server::sendRPL(ClientConnection &client, const std::string &content)
+{
+    client.writeBuffer += content;
+    this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
+    std::cout << "[RPL/ERR] sender=" << client.username
+        << " channel='" << client.currentChannel
+        << "' msg='" << content << "'\n";
+    std::cout << "RPL/ERR OK: " << content << std::endl;
+}
+
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
 {
 	//to do
@@ -176,77 +211,75 @@ static int	verifNickname( std::string &nick )
 	return (SUCCESS);
 }
 
-
-void	Server::handleRegistration( Message &msg, int fd )
+void	Server::handleRegistration( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
 	case NICK:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), *this);
+			sendRPL(user, RPL::errNoNickNameGiven());
 		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), *this);
+			sendRPL(user, RPL::errErroneusNickname());
 		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), *this);
+			sendRPL(user, RPL::errNickNameInUse());
 		} else {
-			this->clients[fd].username = msg.params[0].value;
-			this->clients[fd].hasNick = true;
+			user.username = msg.params[0].value;
+			user.hasNick = true;
 		}
 		break;
 	case USER:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), *this);
+			sendRPL(user, RPL::errNeedMoreParams("USER"));
 		else {
-			this->clients[fd].name = msg.params.back().value;
-			this->clients[fd].hasUser = true;
+			user.name = msg.params.back().value;
+			user.hasUser = true;
 		}
 		break;
 	case PASS:
 		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("PASS"), *this);
-		else if (this->clients[fd].isRegistered)
-			RPL::sendRPL(this->clients[fd], RPL::errAlreadyRegistred(), *this);
+			sendRPL(user, RPL::errNeedMoreParams("PASS"));
+		else if (user.isRegistered)
+			sendRPL(user, RPL::errAlreadyRegistred());
 		else {
-			this->clients[fd].connectionPass = msg.params[0].value;
-			this->clients[fd].hasPass = true;
+			user.connectionPass = msg.params[0].value;
+			user.hasPass = true;
 		}
 		break;
 	}
-	if (this->clients[fd].hasNick && this->clients[fd].hasUser && this->clients[fd].hasPass)
+	if (user.hasNick && user.hasUser && user.hasPass)
 	{
 		std::cout << "REGISTRATION OK :" << std::endl;
-		std::cout << "Client nickname : " << this->clients[fd].username << std::endl;
-		std::cout << "Client username : " << this->clients[fd].name << std::endl;
-		std::cout << "Client password : " << this->clients[fd].connectionPass << std::endl;
-		this->clients[fd].isRegistered = true;
-		RPL::sendRPL(this->clients[fd], RPL::rplWelcome(this->clients[fd].username), *this);
+		std::cout << "Client nickname : " << user.username << std::endl;
+		std::cout << "Client username : " << user.name << std::endl;
+		std::cout << "Client password : " << user.connectionPass << std::endl;
+		user.isRegistered = true;
+		sendRPL(user, RPL::rplWelcome(user.username));
 	}
 }
 
-void	Server::handleClientMessage(Message &msg, int fd)
+void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 {
-	Channel		channel = this->channels[clients[fd].currentChannel];
-
 	switch (msg.command) {
 	case JOIN:
-		joinChannel(this->clients, msg.rawMessage, fd, this->channels);
+		joinCmd(msg, user);
 	case TOPIC:
-		channel.topicCmd(msg, this->clients, fd, *this);
-	// case MODE:
-	// 	channel.modeCmd(msg);
-	// case INVITE:
-	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
-	// case KICK:
-	// 	channel.kickCmd(msg);
-	case PRIVMSG:
-		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
+		topicCmd(msg, user);
+	case MODE:
+		modeCmd(msg, user);
+	case INVITE:
+		inviteCmd(msg, user);
+	case KICK:
+		kickCmd(msg, user);
+	// case PRIVMSG:
+		// broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
 	}
 }
 
 void Server::callRecv(int fd)
 {
-	char	buffer[4096];
-    int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-	size_t	pos;
+	ClientConnection	user = this->clients[fd];
+	char				buffer[4096];
+    int 				bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	size_t				pos;
 
     if (bytesReceived <= 0)
     {
@@ -255,19 +288,19 @@ void Server::callRecv(int fd)
         clients.erase(fd);
         return ;
     }
-	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
-	pos = this->clients[fd].readBuffer.find("\r\n");
+	user.readBuffer += std::string(buffer, bytesReceived);
+	pos = user.readBuffer.find("\r\n");
 	while (pos != std::string::npos)
 	{
-		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
-		this->clients[fd].readBuffer.erase(0, pos + 2);
+		std::string	line = user.readBuffer.substr(0, pos + 2);
+		user.readBuffer.erase(0, pos + 2);
 		Message	msg(line);
 		std::cout << msg << std::endl;
-		if (clients[fd].isRegistered == true)
-			handleClientMessage(msg, fd);
+		if (user.isRegistered == true)
+			handleClientMessage(msg, user);
 		else 
-			handleRegistration(msg, fd);
-		pos = this->clients[fd].readBuffer.find("\r\n");
+			handleRegistration(msg, user);
+		pos = user.readBuffer.find("\r\n");
 	}
 }
 

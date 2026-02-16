@@ -25,15 +25,12 @@ class Channel
         ~Channel( void );
         Channel( const std::string &, int );
 
-		void	insertUser(int);
-		bool	isOperator( int );
-		bool	isOnChannel( int );
-		bool	getIsInviteOnly();
-
-		int		kickCmd( Message & );
-		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
-		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
-		int		modeCmd( Message & );
+		void		insertUser(int);
+		bool		isOperator( int ); //switch to client connection
+		bool		isOnChannel( int );
+		bool		getIsInviteOnly();
+		std::string	getName();
+		std::string	getTopic();
 };
 
 #endif
