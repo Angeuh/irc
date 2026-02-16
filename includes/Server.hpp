@@ -25,10 +25,11 @@ class Server
 
 	
         int     acceptNewClient();
-        void	callRecv( int, int );
+        void	callRecv( int );
 		void	handleClientMessage( Message &, int );
         //int handleClientMessage(int fd);
 		void	handleRegistration( Message &, int );
+        void    closeFd();
 
         int connectionIrssi(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd);
