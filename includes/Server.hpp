@@ -47,11 +47,8 @@ class Server
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?
         void	modifyEpoll(int fd, uint32_t events);	// pass to private ?
         void	removeFromEpoll(int fd);				// pass to private ?
-        void	broadcastingMessage(std::map<int, ClientConnection> &clients,
-                                const std::string &content,
-								const std::string &command,
-                                int fd);
-		void	sendRPL( ClientConnection &client, const std::string &content );
+		void 	broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content );
+		void	sendMessage( ClientConnection &client, const std::string &content );
 
         static void SignalHandler(int signum);
         class PollError : public std::exception {

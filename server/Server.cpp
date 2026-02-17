@@ -70,42 +70,68 @@ int Server::acceptNewClient()
     return clientSocket;
 }
 
+//à faire : séparer en deux, channel existant et non existant (je fais demain)
+void	Server::joinOneChannel( ClientConnection &user, std::string &channel, std::string &key, bool hasKey )
+{
+    if (channel.empty()) {
+		// sendMessage(user, RPL::errBadChanMask()); // À vérifier
+		return ;
+	}
+	if (channel[0] != '#')
+        channel = "#" + channel;
+	if (channel.isInviteOnly()) {
+		sendMessage(user, RPL::errInviteOnlyChan(user, channel));
+		return ;
+	}
+	if (channel.isFull()) {
+		sendMessage(user, RPL::errChanFull(user, channel));
+		return ;		
+	}
+	user.currentChannel = channel;
+	broadcastingMessage(user, "JOIN", RPL::joinMessage());
+	if (this->channels.find(channel) == this->channels.end())
+		this->channels[channel] = Channel(channel, user);
+	else
+		this->channels[channel].insertUser(fd);
+	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), channel.));
+	sendMessage(user, RPL::rplNamReply(channel));
+}
+
+static std::vector<std::string> split( const std::string& str ) {
+    std::vector<std::string>	res;
+    size_t 						start = 0;
+    size_t						end = str.find(',');
+    
+    while (end != std::string::npos) {
+        res.push_back(str.substr(start, end - start));
+        start = end + 1;
+        end = str.find(',', start);
+    }
+    res.push_back(str.substr(start));
+    return (res);
+}
+
+// join <channel,channel,channel...> <key,key,key...>
+// channel[i] -> key[i] each join generates its own success or error
 void	Server::joinCmd( Message &msg, ClientConnection &user )
 {
-	(void) msg;
-	(void) user;
-    // std::string channel = trimCRLF(msg.substr(5));
-    // std::cout << "Requested to join channel: '" << channel << "'\n";
-    // if (channel.empty() || channel == ":" || (channel[0] == ':' && channel.size() == 1)) 
-    //     return -1;
-    // /* if(channel.get_isInviteOnly() == true)
-    // {
-    //     // ERR_INVITEONLYCHAN err : 473
-    //     //           "<channel> :Cannot join channel (+i)"
-    //     std::cerr << "<channel> :Cannot join channel " << channel[0] << std::endl;
-    //     return -1;
-    // } */
-    // std::cout << "[JOIN] fd=" << fd
-    //       << " requested channel: '" << msg << "'\n";
-    // std::cout << "[JOIN] normalized as: '" << channel << "'\n";
-    // if (channel.empty() || channel[0] != '#')
-    //     channel = "#" + channel;
-    // clients[fd].currentChannel = channel;
-    // std::string joinMsg =
-    //     ":" + clients[fd].username + "!user@localhost JOIN :" + channel + "\r\n";
-    // for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
-    // {
-    //     ClientConnection &c = it->second;
-    //     if (c.currentChannel == channel)
-    //     {
-    //         c.writeBuffer += joinMsg;
-    //         this->modifyEpoll(c.fd, EPOLLIN | EPOLLOUT);
-    //     }
-    // }
-	// if (channels.find(channel) == channels.end())
-	// 	channels[channel] = Channel(channel, fd);
-	// else
-	// 	channels[channel].insertUser(fd);
+	std::vector<std::string>	channels;
+	std::vector<std::string>	keys;
+
+	std::cout << "[JOIN]" << std::endl;
+	if (msg.params.size() == 0)
+		sendMessage(user, RPL::errNeedMoreParams("USER"));
+	channels = split(msg.params[0]);
+	keys = split(msg.params[1]);
+    
+	for (int i = 0; i < channels.size(); i++)
+	{
+		if (i < keys.size())
+			joinOneChannel(user, channels[i], keys[i], true);
+		else
+			joinOneChannel(user, channels[i], "", false);
+	}
+	
 }
 
 // format : KICK <channel, ...> <nick, ...> [<reason>]
@@ -113,6 +139,7 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 // reason broadcasted to all users
 void	Server::kickCmd( Message &msg, ClientConnection &user )
 {
+	std::cout << "[KICK]" << std::endl;
 	(void) msg;
 	(void) user;
 }
@@ -120,6 +147,7 @@ void	Server::kickCmd( Message &msg, ClientConnection &user )
 // format : INVITE <nickname> <channel>
 void	Server::inviteCmd( Message &msg, ClientConnection &user )
 {
+	std::cout << "[INVITE]" << std::endl;
 	(void) msg;
 	(void) user;
 }
@@ -129,64 +157,47 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 {
 	Channel	channel; //to do
 
-	if (msg.howManyParam == 0) {
-		sendRPL(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	// } else if (channel.isOperator(user) == false) {
-		// sendRPL(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+	std::cout << "[TOPIC]" << std::endl;
+	if (msg.params.size() == 0) {
+		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	} else if (channel.isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
 	} else if (msg.params[1].value.empty()) {
 		channel.getTopic() = "";
-		sendRPL(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
 	} else {
 		channel.getTopic() = msg.params[1].value;
-		// broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd);
+		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel, msg.params[1].value));
 	}
 }
 
 void	Server::modeCmd( Message &msg, ClientConnection &user )
 {
+	std::cout << "[MODE]" << std::endl;
 	(void) msg;
 	(void) user;
 }
 
-void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
-                                const std::string &content,
-								const std::string &command,
-                                int fd)
+//send content to all users in channel (except for user if PRIVMSG)
+void Server::broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content )
 {
-	bool skipSender = (command == "PRIVMSG");
-    ClientConnection &sender = clients[fd];
-    std::string ircMsg =
-        ":" + sender.username + "!user@localhost " + command + " " +
-        sender.currentChannel + " :" + content + "\r\n";
-
-    std::map<int, ClientConnection>::iterator it = clients.begin();
-    for (; it != clients.end(); ++it)
+	bool skipUser = (command == "PRIVMSG");
+    for (std::map<int, ClientConnection>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
     {
         ClientConnection &client = it->second;
-
-        if (client.currentChannel == sender.currentChannel &&
-            (!skipSender || client.fd != fd))
-        {
-            client.writeBuffer += ircMsg;
-            if (ircMsg.size() > 512) 
-            {
-                ircMsg = ircMsg.substr(0, 512);
-            }
-            this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
-        }
-        std::cout << "[BROADCAST] sender=" << sender.username
-          << " fd=" << fd
-          << " channel='" << sender.currentChannel
-          << "' msg='" << content << "'\n";
+        if (client.currentChannel == user.currentChannel && (!skipUser || client.username != user.username))
+            sendMessage(client, content);
+        std::cout << "[BROADCAST] receiver =" << client.username << std::endl;
     }
-
-    std::cout << "Broadcast OK: " << ircMsg;
+    std::cout << "Broadcast OK: " << content;
 }
 
 // - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
 // - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
 // - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
-void Server::sendRPL(ClientConnection &client, const std::string &content)
+
+//send content to client
+void Server::sendMessage(ClientConnection &client, const std::string &content)
 {
     client.writeBuffer += content;
     this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
@@ -211,34 +222,37 @@ static int	verifNickname( std::string &nick )
 	return (SUCCESS);
 }
 
+// nick <username> / user <username> <hostname> <servername> <realname> / pass <password>
 void	Server::handleRegistration( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
 	case NICK:
-		if (msg.howManyParam == 0)
-			sendRPL(user, RPL::errNoNickNameGiven());
+		if (msg.params.size() == 0)
+			sendMessage(user, RPL::errNoNickNameGiven());
 		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			sendRPL(user, RPL::errErroneusNickname());
+			sendMessage(user, RPL::errErroneusNickname());
 		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
-			sendRPL(user, RPL::errNickNameInUse());
+			sendMessage(user, RPL::errNickNameInUse(user.username));
 		} else {
 			user.username = msg.params[0].value;
 			user.hasNick = true;
 		}
 		break;
 	case USER:
-		if (msg.howManyParam == 0)
-			sendRPL(user, RPL::errNeedMoreParams("USER"));
+		if (msg.params.size() != 4)
+			sendMessage(user, RPL::errNeedMoreParams("USER"));
+		else if (user.isRegistered)
+			sendMessage(user, RPL::errAlreadyRegistred());
 		else {
 			user.name = msg.params.back().value;
 			user.hasUser = true;
 		}
 		break;
 	case PASS:
-		if (msg.howManyParam == 0)
-			sendRPL(user, RPL::errNeedMoreParams("PASS"));
+		if (msg.params.size() == 0)
+			sendMessage(user, RPL::errNeedMoreParams("PASS"));
 		else if (user.isRegistered)
-			sendRPL(user, RPL::errAlreadyRegistred());
+			sendMessage(user, RPL::errAlreadyRegistred());
 		else {
 			user.connectionPass = msg.params[0].value;
 			user.hasPass = true;
@@ -252,7 +266,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		std::cout << "Client username : " << user.name << std::endl;
 		std::cout << "Client password : " << user.connectionPass << std::endl;
 		user.isRegistered = true;
-		sendRPL(user, RPL::rplWelcome(user.username));
+		sendMessage(user, RPL::rplWelcome(user.username));
 	}
 }
 
@@ -269,8 +283,8 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 		inviteCmd(msg, user);
 	case KICK:
 		kickCmd(msg, user);
-	// case PRIVMSG:
-		// broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
+	case PRIVMSG:
+		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "TOPIC", user.currentChannel, msg.params[0].value));
 	}
 }
 

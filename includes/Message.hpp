@@ -58,7 +58,6 @@ class Message
 		t_token					commandToken;
 		int						command;
 		std::vector<t_token>	params;
-		int						howManyParam;
 		bool					hasTrailing;
 
 		class ParsingError : public std::exception {

@@ -148,7 +148,6 @@ void	Message::parseMessage()
 			readUntilDelimiter(this->rawMessage, i, " :\r");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
-			this->howManyParam++;
 			if (this->rawMessage[i] == '\r') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
@@ -165,10 +164,8 @@ void	Message::parseMessage()
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
 			this->hasTrailing = true;
-			this->howManyParam++;
 			if (token.value.empty()) {
 				this->params.pop_back();
-				this->howManyParam--;
 				this->hasTrailing = false;
 			}
 			state = END;
