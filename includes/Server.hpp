@@ -30,11 +30,12 @@ class Server
 		void	handleRegistration( Message&, ClientConnection& );
 
         void	joinCmd( Message&, ClientConnection& );
+		void	joinOneChannel( ClientConnection &, std::string &, std::string &, bool );
+		void	welcomeToChannel( Channel &, ClientConnection & );
 		void	kickCmd( Message&, ClientConnection& );
 		void	inviteCmd( Message&, ClientConnection& );
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
-	//const 
 
     public:
 		Server();
@@ -47,8 +48,8 @@ class Server
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?
         void	modifyEpoll(int fd, uint32_t events);	// pass to private ?
         void	removeFromEpoll(int fd);				// pass to private ?
-		void 	broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content );
-		void	sendMessage( ClientConnection &client, const std::string &content );
+		void 	broadcastingMessage( ClientConnection &, const std::string &, const std::string & );
+		void	sendMessage( ClientConnection &, const std::string & );
 
         static void SignalHandler(int signum);
         class PollError : public std::exception {

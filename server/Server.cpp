@@ -43,6 +43,7 @@ Server::Server(int port, std::string pass) :
     addToEpoll(serverSocket, EPOLLIN);
     std::cout << "Server listening on port " << port << std::endl;
 }
+
 void Server::SignalHandler(int signum)
 {
 	(void)signum;
@@ -53,6 +54,35 @@ void Server::SignalHandler(int signum)
 char const *Server::PollError::what() const throw()
 {
     return "Poll failed";
+}
+
+//send content to all users in channel (except for user if PRIVMSG)
+void Server::broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content )
+{
+	bool skipUser = (command == "PRIVMSG");
+    for (std::map<int, ClientConnection>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
+    {
+        ClientConnection &client = it->second;
+        if (client.currentChannel == user.currentChannel && (!skipUser || client.username != user.username))
+            sendMessage(client, content);
+        std::cout << "[BROADCAST] receiver =" << client.username << std::endl;
+    }
+    std::cout << "Broadcast OK: " << content;
+}
+
+// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
+// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
+// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
+
+//send content to client
+void Server::sendMessage(ClientConnection &client, const std::string &content)
+{
+    client.writeBuffer += content;
+    this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
+    std::cout << "[RPL/ERR] sender=" << client.username
+        << " channel='" << client.currentChannel
+        << "' msg='" << content << "'\n";
+    std::cout << "RPL/ERR OK: " << content << std::endl;
 }
 
 int Server::acceptNewClient()
@@ -70,31 +100,48 @@ int Server::acceptNewClient()
     return clientSocket;
 }
 
-//à faire : séparer en deux, channel existant et non existant (je fais demain)
-void	Server::joinOneChannel( ClientConnection &user, std::string &channel, std::string &key, bool hasKey )
+void	Server::welcomeToChannel( Channel &channel, ClientConnection &user )
 {
-    if (channel.empty()) {
+	broadcastingMessage(user, "JOIN", RPL::ircMessageNoContent(user.username, "JOIN", channel.getName()));
+	if (channel.hasTopic)
+		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), channel.getTopic()));
+	else
+		sendMessage(user, RPL::rplNoTopic(user.username, channel.getName()));
+	sendMessage(user, RPL::rplNamReply(channel));
+}
+
+//à faire : séparer en deux, channel existant et non existant (je fais demain)
+void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, std::string &key, bool hasKey )
+{
+    if (channelName.empty()) {
 		// sendMessage(user, RPL::errBadChanMask()); // À vérifier
 		return ;
 	}
-	if (channel[0] != '#')
-        channel = "#" + channel;
-	if (channel.isInviteOnly()) {
-		sendMessage(user, RPL::errInviteOnlyChan(user, channel));
+	if (channelName[0] != '#')
+		channelName = "#" + channelName;
+
+	std::map<std::string, Channel>::iterator	it = this->channels.find(channelName);
+	if (it == this->channels.end()) {
+		this->channels[channelName] = Channel(channelName, user.fd);
+		welcomeToChannel(this->channels[channelName], user);
 		return ;
 	}
-	if (channel.isFull()) {
-		sendMessage(user, RPL::errChanFull(user, channel));
-		return ;		
-	}
-	user.currentChannel = channel;
-	broadcastingMessage(user, "JOIN", RPL::joinMessage());
-	if (this->channels.find(channel) == this->channels.end())
-		this->channels[channel] = Channel(channel, user);
-	else
-		this->channels[channel].insertUser(fd);
-	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), channel.));
-	sendMessage(user, RPL::rplNamReply(channel));
+	else {
+		Channel	channel = it->second;
+		if (channel.isInviteOnly()) {
+			sendMessage(user, RPL::errInviteOnlyChan(user.username, channel.getName()));
+			return ;
+		} else if (channel.isFull()) {
+			sendMessage(user, RPL::errChannelIsFull(user.username, channel.getName()));
+			return ;
+		} else if (channel.hasKey && ((hasKey && key != channel.getKey()) || (!hasKey))) {
+			sendMessage(user, RPL::errBadChannelKey(user.username, channel.getName()));
+			return ;
+		} else {
+			channel.insertUser(user.fd);
+			welcomeToChannel(channel, user);
+		}
+	}		
 }
 
 static std::vector<std::string> split( const std::string& str ) {
@@ -121,15 +168,15 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	std::cout << "[JOIN]" << std::endl;
 	if (msg.params.size() == 0)
 		sendMessage(user, RPL::errNeedMoreParams("USER"));
-	channels = split(msg.params[0]);
-	keys = split(msg.params[1]);
+	channels = split(msg.params[0].value);
+	keys = split(msg.params[1].value);
     
-	for (int i = 0; i < channels.size(); i++)
+	for (unsigned long i = 0; i < channels.size(); i++)
 	{
 		if (i < keys.size())
 			joinOneChannel(user, channels[i], keys[i], true);
 		else
-			joinOneChannel(user, channels[i], "", false);
+			joinOneChannel(user, channels[i], channels[i], false);
 	}
 	
 }
@@ -160,14 +207,14 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 	std::cout << "[TOPIC]" << std::endl;
 	if (msg.params.size() == 0) {
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	} else if (channel.isOperator(user) == false) {
+	} else if (channel.isOperator(user.fd) == false) {
 		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
 	} else if (msg.params[1].value.empty()) {
 		channel.getTopic() = "";
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
 	} else {
 		channel.getTopic() = msg.params[1].value;
-		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel, msg.params[1].value));
+		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
 	}
 }
 
@@ -176,35 +223,6 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 	std::cout << "[MODE]" << std::endl;
 	(void) msg;
 	(void) user;
-}
-
-//send content to all users in channel (except for user if PRIVMSG)
-void Server::broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content )
-{
-	bool skipUser = (command == "PRIVMSG");
-    for (std::map<int, ClientConnection>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
-    {
-        ClientConnection &client = it->second;
-        if (client.currentChannel == user.currentChannel && (!skipUser || client.username != user.username))
-            sendMessage(client, content);
-        std::cout << "[BROADCAST] receiver =" << client.username << std::endl;
-    }
-    std::cout << "Broadcast OK: " << content;
-}
-
-// - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
-// - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
-// - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
-
-//send content to client
-void Server::sendMessage(ClientConnection &client, const std::string &content)
-{
-    client.writeBuffer += content;
-    this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
-    std::cout << "[RPL/ERR] sender=" << client.username
-        << " channel='" << client.currentChannel
-        << "' msg='" << content << "'\n";
-    std::cout << "RPL/ERR OK: " << content << std::endl;
 }
 
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )

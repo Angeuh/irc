@@ -4,7 +4,6 @@ Message::Message() {}
 
 Message::Message( const std::string& msg ) :
 	rawMessage(msg),
-	howManyParam(0),
 	hasTrailing(false)
 {
 	this->prefix.value = "";
@@ -15,7 +14,6 @@ Message::Message( const std::string& msg ) :
 
 Message::Message(const char *buf, int bytesReceived) : 
 	rawMessage(std::string(buf, bytesReceived)),
-	howManyParam(0),
 	hasTrailing(false)
 {
 	std::cout << rawMessage << std::endl;

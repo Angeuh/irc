@@ -3,7 +3,13 @@
 Channel::Channel() {}
 
 // create channel with user as operator
-Channel::Channel( const std::string & n, const ClientConnection &user ) : name(n), inviteOnly(false) {
+Channel::Channel( const std::string & n, int user ) :
+	name(n),
+	inviteOnly(false),
+	hasTopic(false),
+	hasKey(false),
+	hasLimit(false)
+{
 	this->users.insert(user);
 	this->operators.insert(user);
 }
@@ -35,7 +41,7 @@ bool	Channel::isInviteOnly()
 
 bool	Channel::isFull()
 {
-	return (hasLimit && this->users.size() == limit)
+	return (hasLimit && this->users.size() == limit);
 }
 
 std::string	Channel::getName()
@@ -46,4 +52,9 @@ std::string	Channel::getName()
 std::string	Channel::getTopic()
 {
 	return (this->topic);
+}
+
+std::string	Channel::getKey()
+{
+	return (this->key);
 }

@@ -10,6 +10,7 @@
 // /connect DALNET + /RAWLOG OPEN debug.log for debug logs on official server (to test display)
 class ClientConnection;
 class Server;
+class Channel;
 
 class RPL
 {
@@ -25,7 +26,7 @@ class RPL
 		static std::string	rplTopic( const std::string &, const std::string &,  const std::string & );
 
 		static std::string	rplInviting( const std::string &, const std::string &,  const std::string & );
-		static std::string	rplNamReply( const Channel & );
+		static std::string	rplNamReply( Channel & );
 
 		static std::string	errNeedMoreParams( const std::string & );
 		static std::string	errNotOnChannel( const std::string & );

@@ -4,6 +4,7 @@ RPL::RPL() {}
 
 RPL::~RPL() {}
 
+//modify for user
 //username, command, channel, content
 std::string	RPL::ircMessageContent(const std::string &username, const std::string &command, const std::string &channel, const std::string &content)
 {
@@ -41,9 +42,10 @@ std::string	RPL::rplInviting(const std::string &username, const std::string &cha
 }
 
 
-std::string	RPL::rplNamReply( const Channel & channel )
+std::string	RPL::rplNamReply( Channel &channel )
 {
-	return (":" + std::string(SERVERNAME) + " 341 " + username + " " + channel + " :" + topic + "\r\n");
+	// return (":" + std::string(SERVERNAME) + " 341 " + username + " " + channel + " :" + topic + "\r\n");
+	return (channel.getName());
 }
 
 //command
@@ -99,7 +101,7 @@ std::string	RPL::errErroneusNickname( void )
 //username
 std::string	RPL::errNickNameInUse( const std::string &username )
 {
-	return (":" + std::string(SERVERNAME) + " 433 * " << username << " :Nickname is already in use\r\n");
+	return (":" + std::string(SERVERNAME) + " 433 * " + username + " :Nickname is already in use\r\n");
 }
 
 std::string	RPL::errAlreadyRegistred( void )

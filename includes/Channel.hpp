@@ -17,25 +17,28 @@ class Channel
 		std::string						name; // 50 char max, case insensitive ! no ',' or ' '
 		std::string						topic;
 		std::string						key;
-		bool							hasKey;
-		int								limit;
-		bool							hasLimit;
-        std::set<ClientConnection &>	users;
-        std::set<ClientConnection &>	operators;
+		unsigned long					limit;
+        std::set<int>		users;
+        std::set<int>		operators;
 		bool							inviteOnly;
 
     public:
         Channel( void );
         ~Channel( void );
-        Channel( const std::string &, const ClientConnection & );
+        Channel( const std::string &, int );
 
-		void		insertUser(int);
-		bool		isOperator( int ); //switch to client connection
+		bool		hasTopic;
+		bool		hasKey;
+		bool		hasLimit;
+
+		void		insertUser( int );
+		bool		isOperator( int );
 		bool		isOnChannel( int );
 		bool		isInviteOnly();
 		bool		isFull();
 		std::string	getName();
 		std::string	getTopic();
+		std::string	getKey();
 };
 
 #endif
