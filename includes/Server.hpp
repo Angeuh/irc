@@ -29,6 +29,7 @@ class Server
 		void	handleClientMessage( Message &, int );
 		void	handleRegistration( Message &, int );
         void    closeFd();
+        std::string generateFreeNick(const std::string &base);
 
         int joinChannel(std::map<int, ClientConnection> &clients,
                             std::string &msg, int fd,
