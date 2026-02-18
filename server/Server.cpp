@@ -25,19 +25,26 @@ Server::Server(int port, std::string pass) :
         throw std::runtime_error("Socket creation failed");
     }
     sockaddr_in serverAddr;
-    memset(&serverAddr, 0, sizeof(sockaddr_in));
+    memset(&serverAddr, 0, sizeof(sockaddr_in));    
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port);
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     epfd = epoll_create(1024);
     if (epfd < 0)
+    {
+        close(serverSocket); 
         throw std::runtime_error("epoll_create failed");
+    }
     if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
+        close(epfd);
+        close(serverSocket);
         throw std::runtime_error("Bind failed");
     }
     if (listen(serverSocket, 128) < 0)
     {
+        close(epfd);
+        close(serverSocket);
         throw std::runtime_error("Listen failed");
     }
     addToEpoll(serverSocket, EPOLLIN);
@@ -148,10 +155,10 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
             (!skipSender || client.fd != fd))
         {
             client.writeBuffer += ircMsg;
-            if (ircMsg.size() > 512) 
+            /* if (ircMsg.size() > 512) 
             {
                 ircMsg = ircMsg.substr(0, 512);
-            }
+            } */
             this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
         }
         std::cout << "[BROADCAST] sender=" << sender.username
@@ -162,37 +169,151 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     std::cout << "Broadcast OK: " << ircMsg;
 }
+
+//    Numeric Replies:
+
+//            ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
+//            ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
+//            ERR_UNAVAILRESOURCE             ERR_RESTRICTED
+
+    //    431    ERR_NONICKNAMEGIVEN
+    //           ":No nickname given"
+
+    //    432    ERR_ERRONEUSNICKNAME
+    //           "<nick> :Erroneous nickname"
+
+    //      - Returned after receiving a NICK message which contains
+    //        characters which do not fall in the defined set.  See
+    //        section 2.3.1 for details on valid nicknames.
+
+    //    433    ERR_NICKNAMEINUSE
+    //           "<nick> :Nickname is already in use"
+
+    //      - Returned when a NICK message is processed that results
+    //        in an attempt to change to a  currently existing nickname
+    // 436    ERR_NICKCOLLISION
+    //           "<nick> :Nickname collision KILL from <user>@<host>"
+
+    //      - Returned by a server to a client when it detects a
+    //        nickname collision (registered of a NICK that
+    //        already exists by another server).
+
+    //    437    ERR_UNAVAILRESOURCE
+    //           "<nick/channel> :Nick/channel is temporarily unavailable"
+
+    //      - Returned by a server to a user trying to join a channel
+    //        currently blocked by the channel delay mechanism.
+
+    //      - Returned by a server to a user trying to change nickname
+    //        when the desired nickname is blocked by the nick delay
+    //        mechanism.
+
+    //    441    ERR_USERNOTINCHANNEL
+    //           "<nick> <channel> :They aren't on that channel"
+
+    //      - Returned by the server to indicate that the target
+    //        user of the command is not on the given channel.
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
 {
-	//to do
-	(void) clients;
-	(void) nick;
+
+    for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->second.username == nick && it->second.isRegistered == true)
+            return (FAILURE);
+    }
 	return (SUCCESS);
+}
+
+static bool isSpecial(char c) 
+{
+    std::string special = "[]\\`_^{}|";
+    return special.find(c) != std::string::npos;
 }
 
 static int	verifNickname( std::string &nick )
 {
-	//to do
-	(void) nick;
+    std::string special = "[]\\`_^{}|";
+	if (nick.size() > 9 || nick.size() < 1)
+        return (FAILURE);
+
+    char first = nick[0];
+    if (!std::isalpha(first) && !isSpecial(first))
+        return (FAILURE);
+
+    for (size_t i = 1; i < nick.length(); i++) 
+    {
+        char c = nick[i];
+
+        if (!std::isalnum(c) &&!isSpecial(c) && c != '-') 
+            return (FAILURE);
+    }
 	return (SUCCESS);
 }
 
+static std::string itoa(int n)
+{
+    std::ostringstream oss;
+    oss << n;
+    return oss.str();
+}
+
+std::string Server::generateFreeNick(const std::string &base)
+{
+    std::string nick = base;
+
+    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+        return nick;
+
+    nick = base + "_";
+    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+        return nick;
+    for (int i = 1; i < 1000; i++)
+    {
+        nick = base + itoa(i);
+        if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+            return nick;
+    }
+
+    return "";
+}
 
 void	Server::handleRegistration( Message &msg, int fd )
 {
 	switch (msg.command) {
 	case NICK:
-		if (msg.howManyParam == 0)
-			RPL::sendRPL(this->clients[fd], RPL::errNoNickNameGiven(), *this);
-		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errErroneusNickname(), *this);
-		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
-			RPL::sendRPL(this->clients[fd], RPL::errNickNameInUse(), *this);
-		} else {
-			this->clients[fd].username = msg.params[0].value;
-			this->clients[fd].hasNick = true;
-		}
-		break;
+    {
+        std::string wanted = msg.params[0].value;
+
+        if (msg.howManyParam == 0)
+        {
+            RPL::sendRPL(clients[fd],
+                        RPL::errNoNickNameGiven(),
+                        *this);
+        }
+        else if (verifNickname(wanted) == FAILURE)
+        {
+            RPL::sendRPL(clients[fd],
+                        RPL::errErroneusNickname(),
+                        *this);
+        }
+        else if (isNicknameAvailable(clients, wanted) == FAILURE)
+        {
+            wanted = generateFreeNick(wanted);
+            if (wanted.empty())
+            {
+                RPL::sendRPL(clients[fd],
+                            RPL::errNickNameInUse(),
+                            *this);
+                break;
+            }
+            RPL::sendRPL(clients[fd],
+                        RPL::errNickNameInUse(),
+                        *this);
+        }
+        clients[fd].username = wanted;
+        clients[fd].hasNick = true;
+        break;
+    }
 	case USER:
 		if (msg.howManyParam == 0)
 			RPL::sendRPL(this->clients[fd], RPL::errNeedMoreParams("USER"), *this);
@@ -230,8 +351,10 @@ void	Server::handleClientMessage(Message &msg, int fd)
 	switch (msg.command) {
 	case JOIN:
 		joinChannel(this->clients, msg.rawMessage, fd, this->channels);
+        break;
 	case TOPIC:
 		channel.topicCmd(msg, this->clients, fd, *this);
+        break;
 	// case MODE:
 	// 	channel.modeCmd(msg);
 	// case INVITE:
@@ -240,10 +363,10 @@ void	Server::handleClientMessage(Message &msg, int fd)
 	// 	channel.kickCmd(msg);
 	case PRIVMSG:
 		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
+        break;
 	}
 }
 
-void Server::callRecv(int fd)
 void Server::callRecv(int fd)
 {
 	char	buffer[4096];
@@ -299,6 +422,7 @@ void Server::run()
         {
             if (errno == EINTR)
                 break;
+            closeFd();
             throw PollError();
         }
 
