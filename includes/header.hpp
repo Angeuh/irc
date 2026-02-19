@@ -11,6 +11,7 @@
 # include <set>
 # include <map>
 # include <vector>
+# include <algorithm>
 
 # define SUCCESS 0
 # define FAILURE 1

@@ -14,6 +14,7 @@ class Channel;
 class ClientConnection;
 class Message;
 
+// irssi -n nickname -c localhost -p 8080 -w 123
 class Server
 {
     private:
@@ -36,6 +37,8 @@ class Server
 		void	inviteCmd( Message&, ClientConnection& );
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
+		void	quitAllChannels( std::set<std::string> &, ClientConnection& );
+
 
     public:
 		Server();

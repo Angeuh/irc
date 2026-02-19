@@ -41,11 +41,26 @@ std::string	RPL::rplInviting(const std::string &username, const std::string &cha
     return (":" + std::string(SERVERNAME) + " 341 " + username + " " + channel + " :" + topic + "\r\n");
 }
 
-
-std::string	RPL::rplNamReply( Channel &channel )
+//username, channel object
+std::string	RPL::rplNamReply( const std::string &username, Channel &channel )
 {
-	// return (":" + std::string(SERVERNAME) + " 341 " + username + " " + channel + " :" + topic + "\r\n");
-	return (channel.getName());
+	std::string	res = ":" + std::string(SERVERNAME) + " 353 " + username + " = " + channel + " :";
+	
+	for (unsigned long i = 0; i < channel.users.size(); i++)
+	{
+		if (channel.isOperator(channel.users[i]))
+			res += "@";
+		res += channel.users[i].name;
+		res += " ";
+	}
+	res += "\r\n";
+	return (res);
+}
+
+//username, channel
+std::string	RPL::rplEndOfNames( const std::string &username, const std::string &channel )
+{
+	return (":" + std::string(SERVERNAME) + " 366 " + username + " " + channel + " :End of /NAMES list\r\n");
 }
 
 //command

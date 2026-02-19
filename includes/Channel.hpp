@@ -14,26 +14,27 @@ class Server;
 class Channel
 {
     private:
-		std::string						name; // 50 char max, case insensitive ! no ',' or ' '
-		std::string						topic;
-		std::string						key;
-		unsigned long					limit;
-        std::set<int>		users;
-        std::set<int>		operators;
-		bool							inviteOnly;
+		std::string		name; // 50 char max, case insensitive ! no ',' or ' '
+		std::string		topic;
+		std::string		key;
+		unsigned long	limit;
+		bool			inviteOnly;
+			
+	public:
+		Channel( void );
+		~Channel( void );
+		Channel( const std::string &, ClientConnection & );
+	
+		std::vector<ClientConnection>	operators;
+		std::vector<ClientConnection>	users;
+		bool							hasTopic;
+		bool							hasKey;
+		bool							hasLimit;
 
-    public:
-        Channel( void );
-        ~Channel( void );
-        Channel( const std::string &, int );
-
-		bool		hasTopic;
-		bool		hasKey;
-		bool		hasLimit;
-
-		void		insertUser( int );
-		bool		isOperator( int );
-		bool		isOnChannel( int );
+		void		insertUser( ClientConnection & );
+		void		removeUser( ClientConnection & );
+		bool		isOperator( ClientConnection & );
+		bool		isOnChannel( ClientConnection & );
 		bool		isInviteOnly();
 		bool		isFull();
 		std::string	getName();

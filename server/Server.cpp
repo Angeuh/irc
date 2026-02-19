@@ -75,14 +75,11 @@ void Server::broadcastingMessage( ClientConnection &user, const std::string &com
 // - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";
 
 //send content to client
-void Server::sendMessage(ClientConnection &client, const std::string &content)
+void Server::sendMessage( ClientConnection &client, const std::string &content )
 {
     client.writeBuffer += content;
     this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
-    std::cout << "[RPL/ERR] sender=" << client.username
-        << " channel='" << client.currentChannel
-        << "' msg='" << content << "'\n";
-    std::cout << "RPL/ERR OK: " << content << std::endl;
+    std::cout << "[RPL/ERR] " << content << std::endl;
 }
 
 int Server::acceptNewClient()
@@ -108,6 +105,7 @@ void	Server::welcomeToChannel( Channel &channel, ClientConnection &user )
 	else
 		sendMessage(user, RPL::rplNoTopic(user.username, channel.getName()));
 	sendMessage(user, RPL::rplNamReply(channel));
+	sendMessage(user, RPL::rplEndOfNames(user.username, channel.getName()));
 }
 
 //à faire : séparer en deux, channel existant et non existant (je fais demain)
@@ -122,8 +120,9 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 
 	std::map<std::string, Channel>::iterator	it = this->channels.find(channelName);
 	if (it == this->channels.end()) {
-		this->channels[channelName] = Channel(channelName, user.fd);
+		this->channels[channelName] = Channel(channelName, user);
 		welcomeToChannel(this->channels[channelName], user);
+		user.activeChannels.insert(channelName);
 		return ;
 	}
 	else {
@@ -138,8 +137,9 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 			sendMessage(user, RPL::errBadChannelKey(user.username, channel.getName()));
 			return ;
 		} else {
-			channel.insertUser(user.fd);
+			channel.insertUser(user);
 			welcomeToChannel(channel, user);
+			user.activeChannels.insert(channelName);
 		}
 	}		
 }
@@ -158,6 +158,13 @@ static std::vector<std::string> split( const std::string& str ) {
     return (res);
 }
 
+void	Server::quitAllChannels( std::set<std::string> &channels, ClientConnection &user )
+{
+	for (std::set<std::string>::iterator it = channels.begin(); it != channels.end(); it++)
+		this->channels[*it].removeUser(user);
+	channels.clear();
+}
+
 // join <channel,channel,channel...> <key,key,key...>
 // channel[i] -> key[i] each join generates its own success or error
 void	Server::joinCmd( Message &msg, ClientConnection &user )
@@ -173,7 +180,10 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
     
 	for (unsigned long i = 0; i < channels.size(); i++)
 	{
-		if (i < keys.size())
+		if (channels[i] == "0") {
+			quitAllChannels(user.activeChannels, user);
+			return ;
+		} else if (i < keys.size())
 			joinOneChannel(user, channels[i], keys[i], true);
 		else
 			joinOneChannel(user, channels[i], channels[i], false);
@@ -207,7 +217,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 	std::cout << "[TOPIC]" << std::endl;
 	if (msg.params.size() == 0) {
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	} else if (channel.isOperator(user.fd) == false) {
+	} else if (channel.isOperator(user) == false) {
 		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
 	} else if (msg.params[1].value.empty()) {
 		channel.getTopic() = "";
@@ -254,6 +264,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		} else {
 			user.username = msg.params[0].value;
 			user.hasNick = true;
+			std::cout << "[NICK validated] " << user.username << std::endl;
 		}
 		break;
 	case USER:
@@ -264,6 +275,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		else {
 			user.name = msg.params.back().value;
 			user.hasUser = true;
+			std::cout << "[USER validated] " << user.name << std::endl;
 		}
 		break;
 	case PASS:
@@ -274,6 +286,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		else {
 			user.connectionPass = msg.params[0].value;
 			user.hasPass = true;
+			std::cout << "[PASS validated] " << user.connectionPass << std::endl;
 		}
 		break;
 	}
@@ -283,6 +296,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		std::cout << "Client nickname : " << user.username << std::endl;
 		std::cout << "Client username : " << user.name << std::endl;
 		std::cout << "Client password : " << user.connectionPass << std::endl;
+		std::cout << "Client fd : " << user.fd << std::endl;
 		user.isRegistered = true;
 		sendMessage(user, RPL::rplWelcome(user.username));
 	}
@@ -376,6 +390,9 @@ void Server::run()
                         client.writeBuffer.c_str(),
                         client.writeBuffer.size(),
                         0);
+					std::cout << "Write buffer size before send: "
+							<< client.writeBuffer.size()
+							<< std::endl;
 
                     if (sent > 0)
                         client.writeBuffer.erase(0, sent);

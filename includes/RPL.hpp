@@ -27,6 +27,7 @@ class RPL
 
 		static std::string	rplInviting( const std::string &, const std::string &,  const std::string & );
 		static std::string	rplNamReply( Channel & );
+		static std::string	rplEndOfNames( const std::string &, const std::string & );
 
 		static std::string	errNeedMoreParams( const std::string & );
 		static std::string	errNotOnChannel( const std::string & );
