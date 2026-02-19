@@ -30,7 +30,7 @@ class Channel
 		bool	isOnChannel( int );
 		bool	getIsInviteOnly();
 
-		int		kickCmd( Message & );
+		int		kickCmd( Message & , std::map<int, ClientConnection> &, int, std::map<std::string, Channel>	channels;);
 		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
 		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
 		int		modeCmd( Message & );

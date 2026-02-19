@@ -74,6 +74,16 @@ std::string	RPL::errAlreadyRegistred( void )
 {
 	return ":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n";
 }
+
+std::string	RPL::errNoSuchChannel( std::string &channel )
+{
+	return ":" + std::string(SERVERNAME) + " 403 :" + channel +  " :No such channel";
+}
+
+std::string	RPL::errUserNotInChannel( std::string &channel, std::string &nick )
+{
+	return ":" + std::string(SERVERNAME) + " 441 :" + nick + " " + channel +" :They aren't on that channel";
+}
 // - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
 // - Pour les ERR: ":"serverName + " " + ERRnum + " " + command + " " + ERRmsg + "\r\n";
 // - Pour les reponses informatives: ":"nickname"!~"+username"@"serverName + " " + command + " :" + variable + "\r\n";

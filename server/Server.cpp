@@ -154,11 +154,11 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
         if (client.currentChannel == sender.currentChannel &&
             (!skipSender || client.fd != fd))
         {
-            client.writeBuffer += ircMsg;
             /* if (ircMsg.size() > 512) 
             {
                 ircMsg = ircMsg.substr(0, 512);
             } */
+            client.writeBuffer += ircMsg;
             this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
         }
         std::cout << "[BROADCAST] sender=" << sender.username
@@ -169,12 +169,6 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     std::cout << "Broadcast OK: " << ircMsg;
 }
-
-//    Numeric Replies:
-
-//            ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
-//            ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
-//            ERR_UNAVAILRESOURCE             ERR_RESTRICTED
 
     //    431    ERR_NONICKNAMEGIVEN
     //           ":No nickname given"
@@ -191,28 +185,7 @@ void Server::broadcastingMessage(std::map<int, ClientConnection> &clients,
 
     //      - Returned when a NICK message is processed that results
     //        in an attempt to change to a  currently existing nickname
-    // 436    ERR_NICKCOLLISION
-    //           "<nick> :Nickname collision KILL from <user>@<host>"
 
-    //      - Returned by a server to a client when it detects a
-    //        nickname collision (registered of a NICK that
-    //        already exists by another server).
-
-    //    437    ERR_UNAVAILRESOURCE
-    //           "<nick/channel> :Nick/channel is temporarily unavailable"
-
-    //      - Returned by a server to a user trying to join a channel
-    //        currently blocked by the channel delay mechanism.
-
-    //      - Returned by a server to a user trying to change nickname
-    //        when the desired nickname is blocked by the nick delay
-    //        mechanism.
-
-    //    441    ERR_USERNOTINCHANNEL
-    //           "<nick> <channel> :They aren't on that channel"
-
-    //      - Returned by the server to indicate that the target
-    //        user of the command is not on the given channel.
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
 {
 
@@ -304,7 +277,7 @@ void	Server::handleRegistration( Message &msg, int fd )
                 RPL::sendRPL(clients[fd],
                             RPL::errNickNameInUse(),
                             *this);
-                break;
+                break; // if it pass there its most likely a crash or server issue
             }
             RPL::sendRPL(clients[fd],
                         RPL::errNickNameInUse(),
@@ -359,8 +332,8 @@ void	Server::handleClientMessage(Message &msg, int fd)
 	// 	channel.modeCmd(msg);
 	// case INVITE:
 	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
-	// case KICK:
-	// 	channel.kickCmd(msg);
+	case KICK:
+		channel.kickCmd(msg, this->clients, fd, channels);
 	case PRIVMSG:
 		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
         break;
