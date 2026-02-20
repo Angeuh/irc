@@ -19,28 +19,28 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
-void	Channel::insertUser( ClientConnection &user )
+void	Channel::insertUser( const ClientConnection &user )
 {
 	this->users.push_back(user);
 }
 
-void	Channel::removeUser( ClientConnection &user )
+void	Channel::removeUser( const ClientConnection &user )
 {
-	this->users.erase(std::find(this->users.begin(), this->users.end(), user));
+	std::vector<ClientConnection>::iterator it;
+	
+	it = std::find(this->users.begin(), this->users.end(), user);
+	if (it != this->users.end())
+		this->users.erase(it);
 }
 
-bool	Channel::isOperator( ClientConnection &user )
+bool	Channel::isOperator( const ClientConnection &user )
 {
-	if (std::find(this->operators.begin(), this->operators.end(), user) == this->operators.end())
-		return (false);
-	return (true);
+	return (std::find(this->operators.begin(), this->operators.end(), user) != this->operators.end());
 }
 
-bool	Channel::isOnChannel( ClientConnection &user )
+bool	Channel::isOnChannel( const ClientConnection &user )
 {
-	if (std::find(this->users.begin(), this->users.end(), user) == this->users.end())
-		return (false);
-	return (true);
+	return (std::find(this->users.begin(), this->users.end(), user) != this->users.end());
 }
 
 bool	Channel::isInviteOnly()

@@ -31,10 +31,10 @@ class Channel
 		bool							hasKey;
 		bool							hasLimit;
 
-		void		insertUser( ClientConnection & );
-		void		removeUser( ClientConnection & );
-		bool		isOperator( ClientConnection & );
-		bool		isOnChannel( ClientConnection & );
+		void		insertUser( const ClientConnection & );
+		void		removeUser( const ClientConnection & );
+		bool		isOperator( const ClientConnection & );
+		bool		isOnChannel( const ClientConnection & );
 		bool		isInviteOnly();
 		bool		isFull();
 		std::string	getName();

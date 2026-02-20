@@ -104,7 +104,7 @@ void	Server::welcomeToChannel( Channel &channel, ClientConnection &user )
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), channel.getTopic()));
 	else
 		sendMessage(user, RPL::rplNoTopic(user.username, channel.getName()));
-	sendMessage(user, RPL::rplNamReply(channel));
+	sendMessage(user, RPL::rplNameReply(user.username, channel));
 	sendMessage(user, RPL::rplEndOfNames(user.username, channel.getName()));
 }
 
@@ -158,11 +158,11 @@ static std::vector<std::string> split( const std::string& str ) {
     return (res);
 }
 
-void	Server::quitAllChannels( std::set<std::string> &channels, ClientConnection &user )
+void	Server::quitAllChannels( std::set<std::string> &userChannels, ClientConnection &user )
 {
-	for (std::set<std::string>::iterator it = channels.begin(); it != channels.end(); it++)
-		this->channels[*it].removeUser(user);
-	channels.clear();
+	for (std::map<std::string, Channel>::iterator it = this->channels.begin(); it != this->channels.end(); it++)
+		it->second.removeUser(user);
+	userChannels.clear();
 }
 
 // join <channel,channel,channel...> <key,key,key...>
@@ -188,7 +188,6 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 		else
 			joinOneChannel(user, channels[i], channels[i], false);
 	}
-	
 }
 
 // format : KICK <channel, ...> <nick, ...> [<reason>]

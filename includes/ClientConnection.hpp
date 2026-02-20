@@ -29,6 +29,8 @@ class ClientConnection
 		bool						isRegistered;
 		std::string					connectionPass;		// connection password set on registration
 		std::set<std::string>		activeChannels;
+		
+		bool	operator==( const ClientConnection& ) const;
 };
 
 #endif 

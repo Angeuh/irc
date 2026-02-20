@@ -42,15 +42,14 @@ std::string	RPL::rplInviting(const std::string &username, const std::string &cha
 }
 
 //username, channel object
-std::string	RPL::rplNamReply( const std::string &username, Channel &channel )
+std::string	RPL::rplNameReply( const std::string &username, Channel &channel )
 {
-	std::string	res = ":" + std::string(SERVERNAME) + " 353 " + username + " = " + channel + " :";
+	std::string	res = ":" + std::string(SERVERNAME) + " 353 " + username + " = " + channel.getName() + " :";
 	
-	for (unsigned long i = 0; i < channel.users.size(); i++)
-	{
-		if (channel.isOperator(channel.users[i]))
+	for (std::vector<ClientConnection>::iterator it = channel.users.begin(); it != channel.users.end(); it++) {
+		if (channel.isOperator(*it))
 			res += "@";
-		res += channel.users[i].name;
+		res += it->name;
 		res += " ";
 	}
 	res += "\r\n";
