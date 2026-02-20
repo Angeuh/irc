@@ -62,6 +62,19 @@ std::string	RPL::rplEndOfNames( const std::string &username, const std::string &
 	return (":" + std::string(SERVERNAME) + " 366 " + username + " " + channel + " :End of /NAMES list\r\n");
 }
 
+//username, channel object
+std::string	RPL::rplChannelModeIs( const std::string &username, Channel &channel )
+{
+	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName();
+
+	if (channel.inviteOnly == true) {
+		res += " ";
+		res += "i";
+	}
+	res += "\r\n";
+	return (res);
+}
+
 //command
 std::string	RPL::errNeedMoreParams(const std::string &command)
 {

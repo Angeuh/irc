@@ -258,6 +258,11 @@ void	Server::applyMode( char mode, char sign, std::string param, bool hasParam, 
 	}
 }
 
+bool	modeNeedParam( char mode, char sign )
+{
+	return ((mode == 'k' && sign == '+') || mode == 'o' || (mode == 'l' && sign == '+'));
+}
+
 // mode k (key when +k), o (nick), l (limit when +l), t (no parameter), i (no parameter)
 // params[0] = channel, params[1] = modes (+kl-o), params[2 et plus] = paramètres
 void	Server::modeCmd( Message &msg, ClientConnection &user )
@@ -272,16 +277,27 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 		sendMessage(user, RPL::errNoSuchChannel(channelName));
 		return ;
 	}
-
+	if (this->channels[channelName].isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(channelName, user.username));
+		return ;
+	}
+	if (msg.params.size() == 1) {
+		sendMessage(user, RPL::rplChannelModeIs(user.username, this->channels[channelName]));
+		return ;
+	}
 	char			sign;
 	unsigned long	paramIndex = 2;
 	char			mode;
-	for (size_t i = 0; i < msg.params[0].value.size(); i++)
+	for (size_t i = 0; i < msg.params[1].value.size(); i++)
 	{
 		mode = msg.params[0].value[i];
 		if (mode == '+' || mode == '-')
 			sign = mode;
-		else if (paramIndex < msg.params.size()) {
+		else if (modeNeedParam(mode, sign)) {
+			if (paramIndex >= msg.params.size()) {
+				sendMessage(user, RPL::errNeedMoreParams("MODE"));
+				return ;
+			}
 			applyMode(mode, sign, msg.params[paramIndex].value, true, user, this->channels[channelName]);
 			paramIndex++;
 		} else {
