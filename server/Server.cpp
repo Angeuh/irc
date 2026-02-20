@@ -122,7 +122,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	if (it == this->channels.end()) {
 		this->channels[channelName] = Channel(channelName, user);
 		welcomeToChannel(this->channels[channelName], user);
-		user.activeChannels.insert(channelName);
+		user.activeChannels.push_back(this->channels[channelName]);
 		return ;
 	}
 	else {
@@ -139,7 +139,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 		} else {
 			channel.insertUser(user);
 			welcomeToChannel(channel, user);
-			user.activeChannels.insert(channelName);
+			user.activeChannels.push_back(channel);
 		}
 	}		
 }
@@ -163,11 +163,11 @@ static std::vector<std::string> split( const std::string& str ) {
 	return (res);
 }
 
-void	Server::quitAllChannels( std::set<std::string> &userChannels, ClientConnection &user )
+void	Server::quitAllChannels( ClientConnection &user )
 {
-	for (std::map<std::string, Channel>::iterator it = this->channels.begin(); it != this->channels.end(); it++)
-		it->second.removeUser(user);
-	userChannels.clear();
+	for (std::vector<Channel>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
+		it->removeUser(user);
+	user.activeChannels.clear();
 }
 
 // join <channel,channel,channel...> <key,key,key...>
@@ -187,7 +187,7 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	for (unsigned long i = 0; i < channels.size(); i++)
 	{
 		if (channels[i] == "0") {
-			quitAllChannels(user.activeChannels, user);
+			quitAllChannels(user);
 			return ;
 		} else if (i < keys.size())
 			joinOneChannel(user, channels[i], keys[i], true);
@@ -329,7 +329,7 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 		kickCmd(msg, user);
 		break;
 	case PRIVMSG:
-		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "PRIVMSG", user.currentChannel, msg.params[1].value));
+		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "PRIVMSG", msg.params[0].value, msg.params[1].value));
 	}
 }
 
