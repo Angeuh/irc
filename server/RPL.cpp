@@ -75,12 +75,12 @@ std::string	RPL::errAlreadyRegistred( void )
 	return ":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n";
 }
 
-std::string	RPL::errNoSuchChannel( std::string &channel )
+std::string	RPL::errNoSuchChannel( const std::string &channel )
 {
 	return ":" + std::string(SERVERNAME) + " 403 :" + channel +  " :No such channel";
 }
 
-std::string	RPL::errUserNotInChannel( std::string &channel, std::string &nick )
+std::string	RPL::errUserNotInChannel( const std::string &channel, const std::string &nick )
 {
 	return ":" + std::string(SERVERNAME) + " 441 :" + nick + " " + channel +" :They aren't on that channel";
 }

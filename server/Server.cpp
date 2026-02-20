@@ -317,6 +317,11 @@ void	Server::handleRegistration( Message &msg, int fd )
 	}
 }
 
+std::map<std::string, Channel> Server::getChannels()
+{
+	return (this->channels);
+}
+
 void	Server::handleClientMessage(Message &msg, int fd)
 {
 	Channel		channel = this->channels[clients[fd].currentChannel];
@@ -333,7 +338,7 @@ void	Server::handleClientMessage(Message &msg, int fd)
 	// case INVITE:
 	// 	channel.inviteCmd(msg, this->clients, fd, this->fds);
 	case KICK:
-		channel.kickCmd(msg, this->clients, fd, channels);
+		channel.kickCmd(msg, this->clients, fd, *this);
 	case PRIVMSG:
 		broadcastingMessage(this->clients, msg.params[0].value, "PRIVMSG", fd);
         break;

@@ -49,6 +49,7 @@ class Server
 								const std::string &command,
                                 int fd);
 
+        std::map<std::string, Channel> getChannels();
         static void SignalHandler(int signum);
         class PollError : public std::exception {
         public:

@@ -28,16 +28,16 @@ bool	Channel::isOperator( int user )
 	return (this->operators.find(user) != this->operators.end());
 }
 
-bool	Channel::isOnChannelNick( std::string nickname, std::map<int, clinetConnection> clients)
+int	Channel::isOnChannelNick( std::string nickname, std::map<int, ClientConnection> clients)
 {
-	for (std::set<int>::iterator it = users.begin(); users.end(); it++)
+	for (std::set<int>::iterator it = users.begin(); it != users.end(); it++)
 	{
-		int userFd = it;
+		int userFd = *it;
 		if (clients[userFd].username == nickname)
 			return userFd;
 	}
 
-	return (false);
+	return (-1);
 }
 
 bool	Channel::isOnChannel( int user )
@@ -45,11 +45,12 @@ bool	Channel::isOnChannel( int user )
 	return (this->users.find(user) != this->users.end());
 }
 
-static bool channelExist(std::map<std::string, Channel>	channels, std::string name)
+static bool channelExist(Server &server, std::string name)
 {
-	for (std::set<int>::iterator it = channel.begin(); channel.end(); it++)
+	std::map<std::string, Channel> channels = server.getChannels();
+	for (std::map<std::string, Channel>::iterator it = channels.begin(); it != channels.end(); it++)
 	{
-		if (it.name = name)
+		if (it->first == name)
 			return 1;
 	}
 	return (-1);
@@ -67,22 +68,35 @@ static bool channelExist(std::map<std::string, Channel>	channels, std::string na
 // ERR_NEEDMOREPARAMS              ERR_NOSUCHCHANNEL
 //            ERR_BADCHANMASK                 ERR_CHANOPRIVSNEEDED
 //            ERR_USERNOTINCHANNEL            ERR_NOTONCHANNEL
-	static std::string	errNoSuchChannel( const std::string & );
-int		Channel::kickCmd( Message &msg, std::map<int, ClientConnection> &,
-							int, std::map<std::string, Channel>	channels;)
+int		Channel::kickCmd( Message &msg, std::map<int, ClientConnection> &clients,
+							int fd, Server &server)
 {
 	if (msg.howManyParam < 3) {
 		RPL::sendRPL(clients[fd], RPL::errNeedMoreParams(msg.params[1].value), server);
 	} else if (this->isOperator(fd) == false) {   
 		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), server);
 	}
-	else if (!isOnChannelNick(msg.param.value[3], clients)) {
+	else if (!isOnChannelNick(msg.params[3].value, clients)) {
 		RPL::sendRPL(clients[fd], RPL::errUserNotInChannel(clients[fd].username, this->name), server);
 	}
-	else if (!channelExist(channels, msg.params.value[2])) {
-		RPL::sendRPL(clients[fd], RPL::errNoSuchChannel(msg.params.value[2]), server);
+	else if (!channelExist(server, msg.params[2].value)) {
+		RPL::sendRPL(clients[fd], RPL::errNoSuchChannel(msg.params[2].value), server);
 	}
-	
+
+	int targetFd = isOnChannelNick(msg.params[1].value, clients);
+    if (targetFd == -1 || !isOnChannel(targetFd))
+	{
+		RPL::sendRPL(clients[fd], RPL::errUserNotInChannel(clients[fd].username, this->name), server);
+        return (-1);
+	}
+
+	// ?should broadcast the msg user kicked? to user and all on channel
+	//broadcastingMessage()?
+
+	//should end smt like this
+	users.erase(targetFd);
+    operators.erase(targetFd);
+    clients[targetFd].currentChannel.clear();
 	return (0);
 }
 

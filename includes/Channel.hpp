@@ -29,8 +29,9 @@ class Channel
 		bool	isOperator( int );
 		bool	isOnChannel( int );
 		bool	getIsInviteOnly();
+		int	isOnChannelNick( std::string nickname, std::map<int, ClientConnection> clients);
 
-		int		kickCmd( Message & , std::map<int, ClientConnection> &, int, std::map<std::string, Channel>	channels;);
+		int		kickCmd( Message & , std::map<int, ClientConnection> &, int, Server &server);
 		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
 		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
 		int		modeCmd( Message & );
