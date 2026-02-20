@@ -16,24 +16,32 @@ class Channel
     private:
 		std::string		name; // 50 char max, case insensitive ! no ',' or ' '
 		std::string		topic;
-        std::set<int>	users;
-        std::set<int>	operators;
-		bool			isInviteOnly;
+		std::string		key;
+		unsigned long	limit;
+		bool			inviteOnly;
+			
+	public:
+		Channel( void );
+		~Channel( void );
+		Channel( const std::string &, ClientConnection & );
+	
+		std::vector<ClientConnection>	operators;
+		std::vector<ClientConnection>	users;
+		bool							hasTopic;
+		bool							hasKey;
+		bool							hasLimit;
 
-    public:
-        Channel( void );
-        ~Channel( void );
-        Channel( const std::string &, int );
-
-		void	insertUser(int);
-		bool	isOperator( int );
-		bool	isOnChannel( int );
-		bool	getIsInviteOnly();
-
-		int		kickCmd( Message & );
-		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
-		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
-		int		modeCmd( Message & );
+		void		insertUser( const ClientConnection & );
+		void		removeUser( const ClientConnection & );
+		bool		isOperator( const ClientConnection & );
+		bool		isOnChannel( const ClientConnection & );
+		bool		isInviteOnly();
+		bool		isFull();
+		std::string	getName();
+		std::string	getTopic();
+		void		setTopic( const std::string & );
+		std::string	getKey();
+		void		setKey( const std::string & );
 };
 
 #endif

@@ -2,10 +2,16 @@
 
 Channel::Channel() {}
 
-// isInviteOnly(false) 
-Channel::Channel(const std::string & n, int user) : name(n), topic("") {
-	this->users.insert(user);
-	this->operators.insert(user);
+// create channel with user as operator
+Channel::Channel( const std::string & n, ClientConnection &user ) :
+	name(n),
+	inviteOnly(false),
+	hasTopic(false),
+	hasKey(false),
+	hasLimit(false)
+{
+	this->users.push_back(user);
+	this->operators.push_back(user);
 }
 
 Channel::~Channel() {
@@ -13,69 +19,61 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
-bool	Channel::getIsInviteOnly()
+void	Channel::insertUser( const ClientConnection &user )
 {
-	return (this->isInviteOnly);
+	this->users.push_back(user);
 }
 
-void	Channel::insertUser( int user )
+void	Channel::removeUser( const ClientConnection &user )
 {
-	this->users.insert(user);
+	std::vector<ClientConnection>::iterator it;
+	
+	it = std::find(this->users.begin(), this->users.end(), user);
+	if (it != this->users.end())
+		this->users.erase(it);
 }
 
-bool	Channel::isOperator( int user )
+bool	Channel::isOperator( const ClientConnection &user )
 {
-	return (this->operators.find(user) != this->operators.end());
+	return (std::find(this->operators.begin(), this->operators.end(), user) != this->operators.end());
 }
 
-bool	Channel::isOnChannel( int user )
+bool	Channel::isOnChannel( const ClientConnection &user )
 {
-	return (this->users.find(user) != this->users.end());
+	return (std::find(this->users.begin(), this->users.end(), user) != this->users.end());
 }
 
-// format : KICK <channel, ...> <nick, ...> [<reason>]
-// either multiple channels or multiple users
-// reason broadcasted to all users
-int		Channel::kickCmd( Message &msg )
+bool	Channel::isInviteOnly()
 {
-	(void) msg;
-	return (1);
+	return (this->inviteOnly);
 }
 
-// format : INVITE <nickname> <channel>
-int		Channel::inviteCmd( Message &msg, std::map<int, ClientConnection> &clients,
-	int fd)
+bool	Channel::isFull()
 {
-	(void) msg;
-	(void) clients;
-	(void) fd;
-	// if (this->isOperator(fd) == false && this->isInviteOnly == true) 
-		// RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), fds);
-	// if (this->isInviteOnly)
-	// 	std::cout << "ok\n";
-	return (1);
+	return (hasLimit && this->users.size() == limit);
 }
 
-// format : TOPIC [param]
-int		Channel::topicCmd( Message &msg, std::map<int, ClientConnection> &clients,
-	int fd, Server &server)
+std::string	Channel::getName()
 {
-	if (msg.howManyParam == 0) {
-		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), server);
-	} else if (this->isOperator(fd) == false) {
-		RPL::sendRPL(clients[fd], RPL::errChanOpPrivsNeeded(clients[fd].username, this->name), server);
-	} else if (msg.params[1].value.empty()) {
-		this->topic = "";
-		RPL::sendRPL(clients[fd], RPL::rplTopic(clients[fd].username, this->name, msg.params[1].value), server);
-	} else {
-		this->topic = msg.params[1].value;
-		server.broadcastingMessage(clients, msg.params[0].value, "TOPIC", fd);
-	}
-	return (1);
+	return (this->name);
 }
 
-int		Channel::modeCmd( Message &msg )
+std::string	Channel::getTopic()
 {
-	(void) msg;
-	return (1);
+	return (this->topic);
+}
+
+void	Channel::setTopic( const std::string &newTopic )
+{
+	this->topic = newTopic;
+}
+
+std::string	Channel::getKey()
+{
+	return (this->key);
+}
+
+void	Channel::setKey( const std::string &newKey )
+{
+	this->key = newKey;
 }
