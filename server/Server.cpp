@@ -122,7 +122,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	if (it == this->channels.end()) {
 		this->channels[channelName] = Channel(channelName, user);
 		welcomeToChannel(this->channels[channelName], user);
-		user.activeChannels.push_back(this->channels[channelName]);
+		user.activeChannels[channelName] = this->channels[channelName];
 		return ;
 	}
 	else {
@@ -139,7 +139,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 		} else {
 			channel.insertUser(user);
 			welcomeToChannel(channel, user);
-			user.activeChannels.push_back(channel);
+			user.activeChannels[channelName] = channel;
 		}
 	}		
 }
@@ -165,8 +165,8 @@ static std::vector<std::string> split( const std::string& str ) {
 
 void	Server::quitAllChannels( ClientConnection &user )
 {
-	for (std::vector<Channel>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
-		it->removeUser(user);
+	for (std::map<std::string, Channel>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
+		it->second.removeUser(user);
 	user.activeChannels.clear();
 }
 
@@ -218,21 +218,23 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 void	Server::topicCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[TOPIC]" << std::endl;
-	(void) msg;
-	(void) user;
-	// if (msg.params.size() == 0) {
-	// 	sendMessage(user, RPL::errNeedMoreParams("JOIN"));
-	// } else if (msg.params.size() == 1) {
-	// 	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	// } else if (channel.isOperator(user) == false) {
-	// 	sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
-	// } else if (msg.params[1].value.empty()) {
-	// 	channel.getTopic() = "";
-	// 	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	// } else {
-	// 	channel.setTopic() = msg.params[1].value;
-	// 	broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
-	// }
+	if (msg.params.size() == 0) {
+		sendMessage(user, RPL::errNeedMoreParams("JOIN"));
+		return ;
+	}
+	
+	Channel	&channel = user.activeChannels[msg.params[0].value];
+	if (msg.params.size() == 1) {
+		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	} else if (channel.isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+	} else if (msg.params[1].value.empty()) {
+		channel.getTopic() = "";
+		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	} else {
+		channel.setTopic(msg.params[1].value);
+		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
+	}
 }
 
 //differenciate channel mode and user mode
@@ -335,9 +337,9 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 
 void Server::callRecv(int fd)
 {
-	char				buffer[4096];
-    int 				bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
-	size_t				pos;
+	char	buffer[4096];
+    int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	size_t	pos;
 
     if (bytesReceived <= 0)
     {

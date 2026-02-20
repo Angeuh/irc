@@ -19,6 +19,11 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
+bool	Channel::operator==( const Channel other ) const
+{
+	return (this->getName() == other.getName());
+}
+
 void	Channel::insertUser( const ClientConnection &user )
 {
 	this->users.push_back(user);
@@ -53,12 +58,12 @@ bool	Channel::isFull()
 	return (hasLimit && this->users.size() == limit);
 }
 
-std::string	Channel::getName()
+std::string	Channel::getName() const
 {
 	return (this->name);
 }
 
-std::string	Channel::getTopic()
+std::string	Channel::getTopic() const
 {
 	return (this->topic);
 }
@@ -68,7 +73,7 @@ void	Channel::setTopic( const std::string &newTopic )
 	this->topic = newTopic;
 }
 
-std::string	Channel::getKey()
+std::string	Channel::getKey() const
 {
 	return (this->key);
 }

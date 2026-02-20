@@ -24,7 +24,9 @@ class Channel
 		Channel( void );
 		~Channel( void );
 		Channel( const std::string &, ClientConnection & );
-	
+		
+		bool	operator==( const Channel ) const;
+
 		std::vector<ClientConnection>	operators;
 		std::vector<ClientConnection>	users;
 		bool							hasTopic;
@@ -37,11 +39,12 @@ class Channel
 		bool		isOnChannel( const ClientConnection & );
 		bool		isInviteOnly();
 		bool		isFull();
-		std::string	getName();
-		std::string	getTopic();
+		std::string	getName() const;
+		std::string	getTopic() const;
 		void		setTopic( const std::string & );
-		std::string	getKey();
+		std::string	getKey() const;
 		void		setKey( const std::string & );
+
 };
 
 #endif
