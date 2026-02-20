@@ -127,7 +127,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	}
 	else {
 		Channel	channel = it->second;
-		if (channel.isInviteOnly()) {
+		if (channel.inviteOnly == true) {
 			sendMessage(user, RPL::errInviteOnlyChan(user.username, channel.getName()));
 			return ;
 		} else if (channel.isFull()) {
@@ -143,11 +143,6 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 		}
 	}		
 }
-
-// void	Server::quitOneChannel( std::set<std::string> &userChannels, ClientConnection &user )
-// {
-
-// }
 
 static std::vector<std::string> split( const std::string& str ) {
 	std::vector<std::string>	res;
@@ -179,7 +174,7 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 
 	std::cout << "[JOIN]" << std::endl;
 	if (msg.params.size() == 0)
-		sendMessage(user, RPL::errNeedMoreParams("USER"));
+		sendMessage(user, RPL::errNeedMoreParams("JOIN"));
 	else if (msg.params.size() >= 1)
 		channels = split(msg.params[0].value);
 	if (msg.params.size() >= 2)
@@ -219,7 +214,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[TOPIC]" << std::endl;
 	if (msg.params.size() == 0) {
-		sendMessage(user, RPL::errNeedMoreParams("JOIN"));
+		sendMessage(user, RPL::errNeedMoreParams("TOPIC"));
 		return ;
 	}
 	
@@ -237,12 +232,62 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 	}
 }
 
-//differenciate channel mode and user mode
+void	Server::applyMode( char mode, char sign, std::string param, bool hasParam, ClientConnection &user, Channel &channel )
+{
+	(void)param;
+	(void)hasParam;
+	
+	switch (mode) {
+	case 'k':
+		break;
+	case 'o':
+		break;
+	case 'l':
+		break;
+	case 't':
+		break;
+	case 'i':
+		if (sign == '+') {
+			channel.inviteOnly = true;
+		} else {
+			channel.inviteOnly = false;
+		}
+		break;
+	default:
+		sendMessage(user, RPL::errUnknownMode(mode));
+	}
+}
+
+// mode k (key when +k), o (nick), l (limit when +l), t (no parameter), i (no parameter)
+// params[0] = channel, params[1] = modes (+kl-o), params[2 et plus] = paramètres
 void	Server::modeCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[MODE]" << std::endl;
-	(void) msg;
-	(void) user;
+	if (msg.params.size() == 0) {
+		sendMessage(user, RPL::errNeedMoreParams("MODE"));
+		return ;
+	}
+	std::string	channelName = msg.params[0].value;
+	if (this->channels.find(channelName) == this->channels.end()) {
+		sendMessage(user, RPL::errNoSuchChannel(channelName));
+		return ;
+	}
+
+	char			sign;
+	unsigned long	paramIndex = 2;
+	char			mode;
+	for (size_t i = 0; i < msg.params[0].value.size(); i++)
+	{
+		mode = msg.params[0].value[i];
+		if (mode == '+' || mode == '-')
+			sign = mode;
+		else if (paramIndex < msg.params.size()) {
+			applyMode(mode, sign, msg.params[paramIndex].value, true, user, this->channels[channelName]);
+			paramIndex++;
+		} else {
+			applyMode(mode, sign, channelName, false, user, this->channels[channelName]);
+		}
+	}
 }
 
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )

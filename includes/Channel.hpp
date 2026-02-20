@@ -18,7 +18,6 @@ class Channel
 		std::string		topic;
 		std::string		key;
 		unsigned long	limit;
-		bool			inviteOnly;
 			
 	public:
 		Channel( void );
@@ -29,6 +28,7 @@ class Channel
 
 		std::vector<ClientConnection>	operators;
 		std::vector<ClientConnection>	users;
+		bool							inviteOnly;
 		bool							hasTopic;
 		bool							hasKey;
 		bool							hasLimit;
@@ -37,7 +37,6 @@ class Channel
 		void		removeUser( const ClientConnection & );
 		bool		isOperator( const ClientConnection & );
 		bool		isOnChannel( const ClientConnection & );
-		bool		isInviteOnly();
 		bool		isFull();
 		std::string	getName() const;
 		std::string	getTopic() const;

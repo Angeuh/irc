@@ -48,11 +48,6 @@ bool	Channel::isOnChannel( const ClientConnection &user )
 	return (std::find(this->users.begin(), this->users.end(), user) != this->users.end());
 }
 
-bool	Channel::isInviteOnly()
-{
-	return (this->inviteOnly);
-}
-
 bool	Channel::isFull()
 {
 	return (hasLimit && this->users.size() == limit);

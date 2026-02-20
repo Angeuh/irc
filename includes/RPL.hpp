@@ -40,6 +40,8 @@ class RPL
 		static std::string	errErroneusNickname( void );
 		static std::string	errNickNameInUse( const std::string & );
 		static std::string	errAlreadyRegistred( void );
+		static std::string	errNoSuchChannel( const std::string & );
+		static std::string	errUnknownMode( const char );
 };
 
 #endif
