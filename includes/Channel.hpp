@@ -39,7 +39,9 @@ class Channel
 		bool		isFull();
 		std::string	getName();
 		std::string	getTopic();
+		void		setTopic( const std::string & );
 		std::string	getKey();
+		void		setKey( const std::string & );
 };
 
 #endif

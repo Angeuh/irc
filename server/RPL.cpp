@@ -49,7 +49,7 @@ std::string	RPL::rplNameReply( const std::string &username, Channel &channel )
 	for (std::vector<ClientConnection>::iterator it = channel.users.begin(); it != channel.users.end(); it++) {
 		if (channel.isOperator(*it))
 			res += "@";
-		res += it->name;
+		res += it->username;
 		res += " ";
 	}
 	res += "\r\n";

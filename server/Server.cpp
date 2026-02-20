@@ -59,15 +59,15 @@ char const *Server::PollError::what() const throw()
 //send content to all users in channel (except for user if PRIVMSG)
 void Server::broadcastingMessage( ClientConnection &user, const std::string &command, const std::string &content )
 {
-	bool skipUser = (command == "PRIVMSG");
-    for (std::map<int, ClientConnection>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
+	bool	skipUser = (command == "PRIVMSG");
+	for (std::map<int, ClientConnection>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
     {
-        ClientConnection &client = it->second;
-        if (client.currentChannel == user.currentChannel && (!skipUser || client.username != user.username))
-            sendMessage(client, content);
-        std::cout << "[BROADCAST] receiver =" << client.username << std::endl;
+		ClientConnection &client = it->second;
+		if (client.currentChannel == user.currentChannel && (!skipUser || client.username != user.username)) {
+			std::cout << "[BROADCAST] send to " << client.username << std::endl;
+			sendMessage(client, content);
+		}
     }
-    std::cout << "Broadcast OK: " << content;
 }
 
 // - Pour les RPL: ":"serverName + " " + RPLnum + " " + RPLmsg + "\r\n";
@@ -79,7 +79,7 @@ void Server::sendMessage( ClientConnection &client, const std::string &content )
 {
     client.writeBuffer += content;
     this->modifyEpoll(client.fd, EPOLLIN | EPOLLOUT);
-    std::cout << "[RPL/ERR] " << content << std::endl;
+    std::cout << "[SENDMESSAGE] " << content << std::endl;
 }
 
 int Server::acceptNewClient()
@@ -144,18 +144,23 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	}		
 }
 
+// void	Server::quitOneChannel( std::set<std::string> &userChannels, ClientConnection &user )
+// {
+
+// }
+
 static std::vector<std::string> split( const std::string& str ) {
-    std::vector<std::string>	res;
-    size_t 						start = 0;
-    size_t						end = str.find(',');
-    
-    while (end != std::string::npos) {
-        res.push_back(str.substr(start, end - start));
-        start = end + 1;
-        end = str.find(',', start);
-    }
-    res.push_back(str.substr(start));
-    return (res);
+	std::vector<std::string>	res;
+	size_t 						start = 0;
+	size_t						end = str.find(',');
+
+	while (end != std::string::npos) {
+		res.push_back(str.substr(start, end - start));
+		start = end + 1;
+		end = str.find(',', start);
+	}
+	res.push_back(str.substr(start));
+	return (res);
 }
 
 void	Server::quitAllChannels( std::set<std::string> &userChannels, ClientConnection &user )
@@ -175,9 +180,10 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	std::cout << "[JOIN]" << std::endl;
 	if (msg.params.size() == 0)
 		sendMessage(user, RPL::errNeedMoreParams("USER"));
-	channels = split(msg.params[0].value);
-	keys = split(msg.params[1].value);
-    
+	else if (msg.params.size() >= 1)
+		channels = split(msg.params[0].value);
+	if (msg.params.size() >= 2)
+		keys = split(msg.params[1].value);
 	for (unsigned long i = 0; i < channels.size(); i++)
 	{
 		if (channels[i] == "0") {
@@ -211,22 +217,25 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 // format : TOPIC [param]
 void	Server::topicCmd( Message &msg, ClientConnection &user )
 {
-	Channel	channel; //to do
-
 	std::cout << "[TOPIC]" << std::endl;
-	if (msg.params.size() == 0) {
-		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	} else if (channel.isOperator(user) == false) {
-		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
-	} else if (msg.params[1].value.empty()) {
-		channel.getTopic() = "";
-		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	} else {
-		channel.getTopic() = msg.params[1].value;
-		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
-	}
+	(void) msg;
+	(void) user;
+	// if (msg.params.size() == 0) {
+	// 	sendMessage(user, RPL::errNeedMoreParams("JOIN"));
+	// } else if (msg.params.size() == 1) {
+	// 	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	// } else if (channel.isOperator(user) == false) {
+	// 	sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+	// } else if (msg.params[1].value.empty()) {
+	// 	channel.getTopic() = "";
+	// 	sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	// } else {
+	// 	channel.setTopic() = msg.params[1].value;
+	// 	broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
+	// }
 }
 
+//differenciate channel mode and user mode
 void	Server::modeCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[MODE]" << std::endl;
@@ -291,7 +300,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 	}
 	if (user.hasNick && user.hasUser && user.hasPass)
 	{
-		std::cout << "REGISTRATION OK :" << std::endl;
+		std::cout << std::endl << "REGISTRATION OK :" << std::endl;
 		std::cout << "Client nickname : " << user.username << std::endl;
 		std::cout << "Client username : " << user.name << std::endl;
 		std::cout << "Client password : " << user.connectionPass << std::endl;
@@ -306,22 +315,26 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 	switch (msg.command) {
 	case JOIN:
 		joinCmd(msg, user);
+		break;
 	case TOPIC:
 		topicCmd(msg, user);
+		break;
 	case MODE:
 		modeCmd(msg, user);
+		break;
 	case INVITE:
 		inviteCmd(msg, user);
+		break;
 	case KICK:
 		kickCmd(msg, user);
+		break;
 	case PRIVMSG:
-		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "TOPIC", user.currentChannel, msg.params[0].value));
+		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "PRIVMSG", user.currentChannel, msg.params[1].value));
 	}
 }
 
 void Server::callRecv(int fd)
 {
-	ClientConnection	user = this->clients[fd];
 	char				buffer[4096];
     int 				bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
 	size_t				pos;
@@ -333,19 +346,19 @@ void Server::callRecv(int fd)
         clients.erase(fd);
         return ;
     }
-	user.readBuffer += std::string(buffer, bytesReceived);
-	pos = user.readBuffer.find("\r\n");
+	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
+	pos = this->clients[fd].readBuffer.find("\r\n");
 	while (pos != std::string::npos)
 	{
-		std::string	line = user.readBuffer.substr(0, pos + 2);
-		user.readBuffer.erase(0, pos + 2);
+		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
+		this->clients[fd].readBuffer.erase(0, pos + 2);
 		Message	msg(line);
 		std::cout << msg << std::endl;
-		if (user.isRegistered == true)
-			handleClientMessage(msg, user);
+		if (this->clients[fd].isRegistered == true)
+			handleClientMessage(msg, this->clients[fd]);
 		else 
-			handleRegistration(msg, user);
-		pos = user.readBuffer.find("\r\n");
+			handleRegistration(msg, this->clients[fd]);
+		pos = this->clients[fd].readBuffer.find("\r\n");
 	}
 }
 
@@ -389,10 +402,6 @@ void Server::run()
                         client.writeBuffer.c_str(),
                         client.writeBuffer.size(),
                         0);
-					std::cout << "Write buffer size before send: "
-							<< client.writeBuffer.size()
-							<< std::endl;
-
                     if (sent > 0)
                         client.writeBuffer.erase(0, sent);
 

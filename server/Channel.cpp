@@ -63,7 +63,17 @@ std::string	Channel::getTopic()
 	return (this->topic);
 }
 
+void	Channel::setTopic( const std::string &newTopic )
+{
+	this->topic = newTopic;
+}
+
 std::string	Channel::getKey()
 {
 	return (this->key);
+}
+
+void	Channel::setKey( const std::string &newKey )
+{
+	this->key = newKey;
 }

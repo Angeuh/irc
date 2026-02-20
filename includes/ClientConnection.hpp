@@ -9,9 +9,6 @@
 
 class ClientConnection
 {
-
-    private:
-
     public:
 
 		ClientConnection();
