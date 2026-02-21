@@ -29,6 +29,18 @@ void	Channel::insertUser( const ClientConnection &user )
 	this->users.push_back(user);
 }
 
+ClientConnection* Channel::getUserByNick(const std::string &nick)
+{
+	for (std::vector<ClientConnection>::iterator it = users.begin();
+		 it != users.end();
+		 ++it)
+	{
+		if (it->username == nick)
+			return &(*it);
+	}
+	return NULL;
+}
+
 void	Channel::removeUser( const ClientConnection &user )
 {
 	std::vector<ClientConnection>::iterator it;

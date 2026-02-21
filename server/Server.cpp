@@ -196,14 +196,100 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	}
 }
 
+void Server::partCmd(Message &msg, ClientConnection &user)
+{
+	if (msg.params.size() < 1)
+	{
+		sendMessage(user, RPL::errNeedMoreParams("PART"));
+		return;
+	}
+	const std::string &channelName = msg.params[0].value;
+	std::map<std::string, Channel>::iterator it = channels.find(channelName);
+	if (it == channels.end())
+	{
+		sendMessage(user, RPL::errNoSuchChannel(channelName));
+		return;
+	}
+	Channel &channel = it->second;
+	if (!channel.isOnChannel(user))
+	{
+		sendMessage(user, RPL::errNotOnChannel(user.username, channelName));
+		return;
+	}
+	std::string reason;
+	if (msg.params.size() >= 2)
+		reason = msg.params[1].value;
+	std::string content = channelName;
+	if (!reason.empty())
+		content += " :" + reason;
+
+	std::string partMsg = RPL::ircMessageContent(
+		user.username,
+		"PART",
+		channelName,
+		content
+	);
+	broadcastingMessage(user, "PART", partMsg);
+
+	channel.removeUser(user);
+	user.activeChannels.erase(channelName);
+	//i dont know if we delete if empty or not but if we do it here, need to check
+	if (channel.users.empty())
+		channels.erase(it);
+}
+
 // format : KICK <channel, ...> <nick, ...> [<reason>]
 // either multiple channels or multiple users
 // reason broadcasted to all users
-void	Server::kickCmd( Message &msg, ClientConnection &user )
+void Server::kickCmd(Message &msg, ClientConnection &user)
 {
-	std::cout << "[KICK]" << std::endl;
-	(void) msg;
-	(void) user;
+	if (msg.params.size() < 2)
+	{
+		sendMessage(user, RPL::errNeedMoreParams("KICK"));
+		return;
+	}
+	const std::string &channelName = msg.params[0].value;
+	const std::string &nick = msg.params[1].value;
+
+	std::map<std::string, Channel>::iterator it = channels.find(channelName);
+	if (it == channels.end())
+	{
+		sendMessage(user, RPL::errNoSuchChannel(channelName));
+		return;
+	}
+	Channel &channel = it->second;
+	if (!channel.isOnChannel(user))
+	{
+		sendMessage(user, RPL::errNotOnChannel(user.username, channelName));
+		return;
+	}
+	if (!channel.isOperator(user))
+	{
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
+		return;
+	}
+	ClientConnection *target = channel.getUserByNick(nick);
+	if (!target)
+	{
+		sendMessage(user, RPL::errNotOnChannel(nick, channelName));
+		return;
+	}
+	std::string reason;
+	if (msg.params.size() >= 3)
+		reason = msg.params[2].value;
+	std::string content = nick;
+	if (!reason.empty())
+		content += " :" + reason;
+	std::string kickMsg = RPL::ircMessageContent(
+		user.username,
+		"KICK",
+		channelName,
+		content
+	);
+
+	broadcastingMessage(user, "KICK", kickMsg);
+	channel.removeUser(*target);
+	target->activeChannels.erase(channelName);
 }
 
 // format : INVITE <nickname> <channel>

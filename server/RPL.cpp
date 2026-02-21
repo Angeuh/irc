@@ -68,9 +68,9 @@ std::string	RPL::errNeedMoreParams(const std::string &command)
     return (":" + std::string(SERVERNAME) + " 461 " + command + " :Not enough parameters\r\n");
 }
 
-std::string	RPL::errNotOnChannel(const std::string &command)
-{
-    return (":" + std::string(SERVERNAME) + " 442 " + command + " :You're not on that channel\r\n");
+std::string	RPL::errNotOnChannel(const std::string &username, const std::string &channel)
+{	
+	return (":" + std::string(SERVERNAME) + " 442 " + username + " " + channel + " :You're not on that channel\r\n");
 }
 
 //username, channel
@@ -121,5 +121,15 @@ std::string	RPL::errNickNameInUse( const std::string &username )
 std::string	RPL::errAlreadyRegistred( void )
 {
 	return (":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n");
+}
+
+std::string	RPL::errUserNotInChannel( const std::string &channel, const std::string &nick )
+{
+	return ":" + std::string(SERVERNAME) + " 441 :" + nick + " " + channel +" :They aren't on that channel";
+}
+
+std::string	RPL::errNoSuchChannel( const std::string &channel )
+{
+	return ":" + std::string(SERVERNAME) + " 403 :" + channel +  " :No such channel";
 }
 
