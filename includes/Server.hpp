@@ -37,7 +37,7 @@ class Server
 		void	inviteCmd( Message&, ClientConnection& );
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
-		void	applyMode( char, char, std::string, bool, ClientConnection&, Channel& );
+		void	applyMode( char, char, std::string, ClientConnection&, Channel& );
 		void	quitAllChannels( ClientConnection& );
 
 

@@ -232,25 +232,53 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 	}
 }
 
-void	Server::applyMode( char mode, char sign, std::string param, bool hasParam, ClientConnection &user, Channel &channel )
+void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel )
 {
-	(void)param;
-	(void)hasParam;
-	
+	unsigned long	i;
+
 	switch (mode) {
 	case 'k':
+		if (sign == '+') {
+			channel.hasKey = true;
+			channel.setKey(param);
+			std::cout << "KEY SET TO : " << param << std::endl;
+		} else {
+			channel.hasKey = false;
+			std::cout << "KEY REMOVED" << std::endl;
+		}
 		break;
 	case 'o':
+		i = 0;
+
+		while (i < channel.users.size() && channel.users[i].username != param)
+			i++;
+		if (sign == '+') {
+			channel.insertOperator(channel.users[i]);
+			std::cout << "OPERATOR SET FOR : " << param << std::endl;
+		} else {
+			channel.removeOperator(channel.users[i]);
+			std::cout << "OPERATOR REMOVED FOR : " << param << std::endl;
+		}
 		break;
 	case 'l':
+		if (sign == '+') {
+			channel.hasLimit = true;
+			channel.setLimit(strtoul(param.c_str(), NULL, 10));
+			std::cout << "LIMIT SET TO : " << strtoul(param.c_str(), NULL, 10) << std::endl;
+		} else {
+			channel.hasLimit = false;
+			std::cout << "LIMIT REMOVED" << std::endl;
+		}
 		break;
 	case 't':
 		break;
 	case 'i':
 		if (sign == '+') {
 			channel.inviteOnly = true;
+			std::cout << "INVITE ONLY SET" << std::endl;
 		} else {
 			channel.inviteOnly = false;
+			std::cout << "INVITE ONLY REMOVED" << std::endl;
 		}
 		break;
 	default:
@@ -285,7 +313,7 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 		sendMessage(user, RPL::rplChannelModeIs(user.username, this->channels[channelName]));
 		return ;
 	}
-	char			sign;
+	char			sign = '+';
 	unsigned long	paramIndex = 2;
 	char			mode;
 	for (size_t i = 0; i < msg.params[1].value.size(); i++)
@@ -297,11 +325,13 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 			if (paramIndex >= msg.params.size()) {
 				sendMessage(user, RPL::errNeedMoreParams("MODE"));
 				return ;
+			} else {
+				//check params : user in channel, positive limit, ...
 			}
-			applyMode(mode, sign, msg.params[paramIndex].value, true, user, this->channels[channelName]);
+			applyMode(mode, sign, msg.params[paramIndex].value, user, this->channels[channelName]);
 			paramIndex++;
 		} else {
-			applyMode(mode, sign, channelName, false, user, this->channels[channelName]);
+			applyMode(mode, sign, channelName, user, this->channels[channelName]);
 		}
 	}
 }

@@ -44,6 +44,7 @@ class RPL
 		static std::string	errAlreadyRegistred( void );
 		static std::string	errNoSuchChannel( const std::string & );
 		static std::string	errUnknownMode( const char );
+		static std::string	errUserNotInChannel( const std::string & );
 };
 
 #endif

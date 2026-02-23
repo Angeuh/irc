@@ -8,7 +8,8 @@ Channel::Channel( const std::string & n, ClientConnection &user ) :
 	inviteOnly(false),
 	hasTopic(false),
 	hasKey(false),
-	hasLimit(false)
+	hasLimit(false),
+	hasTopicRestriction(false)
 {
 	this->users.push_back(user);
 	this->operators.push_back(user);
@@ -36,6 +37,20 @@ void	Channel::removeUser( const ClientConnection &user )
 	it = std::find(this->users.begin(), this->users.end(), user);
 	if (it != this->users.end())
 		this->users.erase(it);
+}
+
+void	Channel::insertOperator( const ClientConnection &op )
+{
+	this->operators.push_back(op);
+}
+
+void	Channel::removeOperator( const ClientConnection &op )
+{
+	std::vector<ClientConnection>::iterator it;
+	
+	it = std::find(this->operators.begin(), this->operators.end(), op);
+	if (it != this->operators.end())
+		this->operators.erase(it);
 }
 
 bool	Channel::isOperator( const ClientConnection &user )
@@ -77,3 +92,14 @@ void	Channel::setKey( const std::string &newKey )
 {
 	this->key = newKey;
 }
+
+unsigned long	Channel::getLimit() const
+{
+	return (this->limit);
+}
+
+void	Channel::setLimit( const unsigned long newLimit )
+{
+	this->limit = newLimit;
+}
+

@@ -32,18 +32,22 @@ class Channel
 		bool							hasTopic;
 		bool							hasKey;
 		bool							hasLimit;
+		bool							hasTopicRestriction;
 
-		void		insertUser( const ClientConnection & );
-		void		removeUser( const ClientConnection & );
-		bool		isOperator( const ClientConnection & );
-		bool		isOnChannel( const ClientConnection & );
-		bool		isFull();
-		std::string	getName() const;
-		std::string	getTopic() const;
-		void		setTopic( const std::string & );
-		std::string	getKey() const;
-		void		setKey( const std::string & );
-
+		void				insertUser( const ClientConnection & );
+		void				removeUser( const ClientConnection & );
+		void				insertOperator( const ClientConnection & );
+		void				removeOperator( const ClientConnection & );
+		bool				isOperator( const ClientConnection & );
+		bool				isOnChannel( const ClientConnection & );
+		bool				isFull();
+		std::string			getName() const;
+		std::string			getTopic() const;
+		void				setTopic( const std::string & );
+		std::string			getKey() const;
+		void				setKey( const std::string & );
+		unsigned long		getLimit() const;
+		void				setLimit( const unsigned long );
 };
 
 #endif

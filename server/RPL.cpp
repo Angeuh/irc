@@ -63,13 +63,26 @@ std::string	RPL::rplEndOfNames( const std::string &username, const std::string &
 }
 
 //username, channel object
+// display : +tilk limit key
 std::string	RPL::rplChannelModeIs( const std::string &username, Channel &channel )
 {
-	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName();
+	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName() + "+";
 
-	if (channel.inviteOnly == true) {
-		res += " ";
+	if (channel.hasTopicRestriction == true)
+		res += "t";
+	if (channel.inviteOnly == true)
 		res += "i";
+	if (channel.hasLimit == true)
+		res += "l";
+	if (channel.hasKey == true)
+		res += "k";
+	if (channel.hasLimit == true) {
+		res += " ";
+		res += channel.getLimit();
+	}
+	if (channel.hasKey == true) {
+		res += " ";
+		res += channel.getKey();
 	}
 	res += "\r\n";
 	return (res);
@@ -146,4 +159,10 @@ std::string	RPL::errNoSuchChannel( const std::string &channel )
 std::string	RPL::errUnknownMode( const char mode )
 {
 	return (":" + std::string(SERVERNAME) + " 472 " + mode + " :is unknown mode char to me\r\n");
+}
+
+//channel
+std::string	RPL::errUserNotInChannel( const std::string &channel )
+{
+	return (":" + std::string(SERVERNAME) + " 472 " + channel + " :They aren't on that channel\r\n");
 }
