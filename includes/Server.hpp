@@ -29,6 +29,7 @@ class Server
         void	callRecv( int );
 		void	handleClientMessage( Message&, ClientConnection& );
 		void	handleRegistration( Message&, ClientConnection& );
+        std::string generateFreeNick(const std::string &base);
 
         void	joinCmd( Message&, ClientConnection& );
 		void	joinOneChannel( ClientConnection &, std::string &, std::string &, bool );
@@ -38,6 +39,7 @@ class Server
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
 		void	quitAllChannels( ClientConnection& );
+        void    partCmd(Message &, ClientConnection &);
 
 
     public:

@@ -31,13 +31,19 @@ Server::Server(int port, std::string pass) :
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     epfd = epoll_create(1024);
     if (epfd < 0)
+	{
+		close(serverSocket); 
         throw std::runtime_error("epoll_create failed");
+	}
     if (bind(serverSocket, (sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
     {
+		close(epfd);
+        close(serverSocket);
         throw std::runtime_error("Bind failed");
     }
     if (listen(serverSocket, 128) < 0)
     {
+		close(epfd);
         throw std::runtime_error("Listen failed");
     }
     addToEpoll(serverSocket, EPOLLIN);
@@ -201,11 +207,11 @@ void Server::partCmd(Message &msg, ClientConnection &user)
 	//need to make a list of channels
 	std::vector<std::string> listChannels;
 
-	for(size_t i = 0; i < msg.params.size(); i++)
+/* 	for(size_t i = 0; i < msg.params.size(); i++)
 	{
 		listChannels = split(msg.params)
 	}
-
+ */
 	if (msg.params.size() < 1)
 	{
 		sendMessage(user, RPL::errNeedMoreParams("PART"));
@@ -341,17 +347,67 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
 {
-	//to do
-	(void) clients;
-	(void) nick;
+	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->second.username == nick && it->second.isRegistered == true)
+            return (FAILURE);
+    }
 	return (SUCCESS);
+}
+
+static bool isSpecial(char c) 
+{
+    std::string special = "[]\\`_^{}|";
+    return special.find(c) != std::string::npos;
 }
 
 static int	verifNickname( std::string &nick )
 {
 	//to do
 	(void) nick;
+    std::string special = "[]\\`_^{}|";
+	if (nick.size() > 9 || nick.size() < 1)
+        return (FAILURE);
+
+    char first = nick[0];
+    if (!std::isalpha(first) && !isSpecial(first))
+        return (FAILURE);
+
+    for (size_t i = 1; i < nick.length(); i++) 
+    {
+        char c = nick[i];
+
+        if (!std::isalnum(c) &&!isSpecial(c) && c != '-') 
+            return (FAILURE);
+    }
 	return (SUCCESS);
+}
+
+static std::string itoa(int n)
+{
+    std::ostringstream oss;
+    oss << n;
+    return oss.str();
+}
+
+std::string Server::generateFreeNick(const std::string &base)
+{
+    std::string nick = base;
+
+    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+        return nick;
+
+    nick = base + "_";
+    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+        return nick;
+    for (int i = 1; i < 1000; i++)
+    {
+        nick = base + itoa(i);
+        if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+            return nick;
+    }
+
+    return "";
 }
 
 // nick <username> / user <username> <hostname> <servername> <realname> / pass <password>
@@ -359,18 +415,27 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
 	case NICK:
-		if (msg.params.size() == 0)
+		{
+        std::string wanted = msg.params[0].value;
+
+        if (msg.params.size() == 0)
 			sendMessage(user, RPL::errNoNickNameGiven());
-		else if (verifNickname(msg.params[0].value) == FAILURE) {
-			sendMessage(user, RPL::errErroneusNickname());
-		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
-			sendMessage(user, RPL::errNickNameInUse(user.username));
-		} else {
-			user.username = msg.params[0].value;
-			user.hasNick = true;
-			std::cout << "[NICK validated] " << user.username << std::endl;
-		}
-		break;
+        else if (verifNickname(wanted) == FAILURE)
+			sendMessage(user, RPL::errErroneusNickname(msg.params[1].value));
+        else if (isNicknameAvailable(clients, wanted) == FAILURE)
+        {
+            wanted = generateFreeNick(wanted);
+            if (wanted.empty())
+            {
+				sendMessage(user, RPL::errNickNameInUse(wanted));
+                break;
+            }
+            sendMessage(user, RPL::errNickNameInUse(wanted));
+        }
+        user.username = wanted;
+       	user.hasNick = true;
+        break;
+    }
 	case USER:
 		if (msg.params.size() != 4)
 			sendMessage(user, RPL::errNeedMoreParams("USER"));
