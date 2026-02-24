@@ -232,7 +232,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 	}
 }
 
-void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel )
+void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel, std::string &validModes, std::string &validParams )
 {
 	unsigned long	i;
 
@@ -242,9 +242,12 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 			channel.hasKey = true;
 			channel.setKey(param);
 			std::cout << "KEY SET TO : " << param << std::endl;
+			validModes += "+k";
+			validParams += param;
 		} else {
 			channel.hasKey = false;
 			std::cout << "KEY REMOVED" << std::endl;
+			validModes += "-k";
 		}
 		break;
 	case 'o':
@@ -255,9 +258,13 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 		if (sign == '+') {
 			channel.insertOperator(channel.users[i]);
 			std::cout << "OPERATOR SET FOR : " << param << std::endl;
+			validModes += "+o";
+			validParams += param;
 		} else {
 			channel.removeOperator(channel.users[i]);
 			std::cout << "OPERATOR REMOVED FOR : " << param << std::endl;
+			validModes += "-o";
+			validParams += param;
 		}
 		break;
 	case 'l':
@@ -265,20 +272,34 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 			channel.hasLimit = true;
 			channel.setLimit(strtoul(param.c_str(), NULL, 10));
 			std::cout << "LIMIT SET TO : " << strtoul(param.c_str(), NULL, 10) << std::endl;
+			validModes += "+l";
+			validParams += param;
 		} else {
 			channel.hasLimit = false;
 			std::cout << "LIMIT REMOVED" << std::endl;
+			validModes += "-l";
 		}
 		break;
 	case 't':
+		if (sign == '+') {
+			channel.hasTopicRestriction = true;
+			std::cout << "TOPIC RESTRICTION REMOVED" << std::endl;
+			validModes += "+t";
+		} else {
+			channel.hasTopicRestriction = false;
+			std::cout << "TOPIC RESTRICTION SET" << std::endl;
+			validModes += "-t";
+		}
 		break;
 	case 'i':
 		if (sign == '+') {
 			channel.inviteOnly = true;
 			std::cout << "INVITE ONLY SET" << std::endl;
+			validModes += "+i";
 		} else {
 			channel.inviteOnly = false;
 			std::cout << "INVITE ONLY REMOVED" << std::endl;
+			validModes += "-i";
 		}
 		break;
 	default:
@@ -316,24 +337,27 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 	char			sign = '+';
 	unsigned long	paramIndex = 2;
 	char			mode;
+	std::string		validModes;
+	std::string		validParams;
+
 	for (size_t i = 0; i < msg.params[1].value.size(); i++)
 	{
 		mode = msg.params[0].value[i];
-		if (mode == '+' || mode == '-')
+		if (mode == '+' || mode == '-') // no sign = + et si le signe change ça s'applique à tous les modes suivants
 			sign = mode;
 		else if (modeNeedParam(mode, sign)) {
 			if (paramIndex >= msg.params.size()) {
 				sendMessage(user, RPL::errNeedMoreParams("MODE"));
 				return ;
-			} else {
-				//check params : user in channel, positive limit, ...
 			}
-			applyMode(mode, sign, msg.params[paramIndex].value, user, this->channels[channelName]);
+			applyMode(mode, sign, msg.params[paramIndex].value, user, this->channels[channelName], validModes, validParams);
 			paramIndex++;
 		} else {
-			applyMode(mode, sign, channelName, user, this->channels[channelName]);
+			applyMode(mode, sign, channelName, user, this->channels[channelName], validModes, validParams);
 		}
 	}
+	//que les mods qui ont marché et leur params;
+	broadcastingMessage(user, "MODE", RPL::ircMessageContent(user.username, "MODE", channelName, validModes + validParams));
 }
 
 static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
