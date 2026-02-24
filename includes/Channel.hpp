@@ -44,6 +44,8 @@ class Channel
 		void		setTopic( const std::string & );
 		std::string	getKey() const;
 		void		setKey( const std::string & );
+		ClientConnection* getUserByNick(const std::string &nick);
+
 
 };
 

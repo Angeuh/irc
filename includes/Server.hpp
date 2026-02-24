@@ -38,6 +38,7 @@ class Server
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
 		void	quitAllChannels( ClientConnection& );
+        void    partCmd(Message &msg, ClientConnection &user);
 
 
     public:
