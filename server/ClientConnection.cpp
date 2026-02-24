@@ -9,3 +9,8 @@ ClientConnection::ClientConnection() :
 {}
 
 ClientConnection::~ClientConnection() {}
+
+bool	ClientConnection::operator==( const ClientConnection& other ) const
+{
+	return (this->fd == other.fd);
+}

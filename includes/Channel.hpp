@@ -16,25 +16,35 @@ class Channel
     private:
 		std::string		name; // 50 char max, case insensitive ! no ',' or ' '
 		std::string		topic;
-        std::set<int>	users;
-        std::set<int>	operators;
-		bool			isInviteOnly;
+		std::string		key;
+		unsigned long	limit;
+		bool			inviteOnly;
+			
+	public:
+		Channel( void );
+		~Channel( void );
+		Channel( const std::string &, ClientConnection & );
+		
+		bool	operator==( const Channel ) const;
 
-    public:
-        Channel( void );
-        ~Channel( void );
-        Channel( const std::string &, int );
+		std::vector<ClientConnection>	operators;
+		std::vector<ClientConnection>	users;
+		bool							hasTopic;
+		bool							hasKey;
+		bool							hasLimit;
 
-		void	insertUser(int);
-		bool	isOperator( int );
-		bool	isOnChannel( int );
-		bool	getIsInviteOnly();
-		int	isOnChannelNick( std::string nickname, std::map<int, ClientConnection> clients);
+		void		insertUser( const ClientConnection & );
+		void		removeUser( const ClientConnection & );
+		bool		isOperator( const ClientConnection & );
+		bool		isOnChannel( const ClientConnection & );
+		bool		isInviteOnly();
+		bool		isFull();
+		std::string	getName() const;
+		std::string	getTopic() const;
+		void		setTopic( const std::string & );
+		std::string	getKey() const;
+		void		setKey( const std::string & );
 
-		int		kickCmd( Message & , std::map<int, ClientConnection> &, int, Server &server);
-		int		inviteCmd( Message &, std::map<int, ClientConnection> &, int);
-		int		topicCmd( Message &, std::map<int, ClientConnection> &, int, Server &Server);
-		int		modeCmd( Message & );
 };
 
 #endif
