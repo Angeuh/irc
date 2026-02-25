@@ -138,6 +138,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 			return ;
 		} else {
 			channel.insertUser(user);
+			std::cout << "[JOIN] User " << user.username << " inserted in channel " << channel.getName() << std::endl;
 			welcomeToChannel(channel, user);
 			user.activeChannels[channelName] = channel;
 		}
@@ -323,7 +324,9 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 	}
 	std::string	channelName = msg.params[0].value;
 	if (this->channels.find(channelName) == this->channels.end()) {
-		sendMessage(user, RPL::errNoSuchChannel(channelName));
+		if (channelName.empty() == false && channelName[0] == '#') {
+			sendMessage(user, RPL::errNoSuchChannel(user.username, channelName));
+		}
 		return ;
 	}
 	if (this->channels[channelName].isOperator(user) == false) {
@@ -342,7 +345,7 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 
 	for (size_t i = 0; i < msg.params[1].value.size(); i++)
 	{
-		mode = msg.params[0].value[i];
+		mode = msg.params[1].value[i];
 		if (mode == '+' || mode == '-') // no sign = + et si le signe change ça s'applique à tous les modes suivants
 			sign = mode;
 		else if (modeNeedParam(mode, sign)) {

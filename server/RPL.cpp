@@ -149,10 +149,10 @@ std::string	RPL::errAlreadyRegistred( void )
 	return (":" + std::string(SERVERNAME) + " 462 :Unauthorized command (already registered)\r\n");
 }
 
-//channel
-std::string	RPL::errNoSuchChannel( const std::string &channel )
+//username, channel
+std::string	RPL::errNoSuchChannel( const std::string &username, const std::string &channel )
 {
-	return (":" + std::string(SERVERNAME) + " 403 " + channel + " :No such channel\r\n");
+	return (":" + std::string(SERVERNAME) + " 403 " + username + " " + channel + " :No such channel\r\n");
 }
 
 //char
