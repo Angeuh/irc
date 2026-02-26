@@ -107,9 +107,9 @@ std::string	RPL::errNoNickNameGiven( void )
     return (":" + std::string(SERVERNAME) + " 431 :No nickname given\r\n");
 }
 
-std::string	RPL::errErroneusNickname( void )
+std::string	RPL::errErroneusNickname( std::string const &nick )
 {
-	return (":" + std::string(SERVERNAME) + " 432 :Erroneous nickname\r\n");
+	return (":" + std::string(SERVERNAME) + " 432 + " + nick + " :Erroneous nickname\r\n");
 }
 
 //username

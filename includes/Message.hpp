@@ -34,6 +34,7 @@ enum actions
 	TOPIC,
 	MODE,
 	INVITE,
+	PART,
 	KICK,
 	PRIVMSG,
 	DEFAULT

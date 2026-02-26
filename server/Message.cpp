@@ -38,6 +38,7 @@ void	Message::chooseCommand( void )
 	commands["MODE"] = MODE;
 	commands["INVITE"] = INVITE;
 	commands["KICK"] = KICK;
+	commands["PART"] = PART;
 	commands["PRIVMSG"] = PRIVMSG;
 	commands["DEFAULT"] = DEFAULT;
 
@@ -65,6 +66,9 @@ void	Message::chooseCommand( void )
 		break;
 	case INVITE:
 		this->command = INVITE;
+		break;
+	case PART:
+		this->command = PART;
 		break;
 	case KICK:
 		this->command = KICK;
@@ -154,6 +158,9 @@ void	Message::parseMessage()
 					state = TRAILING;
 					i++;
 				}
+			} else if (this->rawMessage[i] == ':') {
+				state = TRAILING;
+				i++;
 			}
 			tokenStart = i;
 			break;

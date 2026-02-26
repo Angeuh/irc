@@ -28,7 +28,7 @@ class ClientConnection
 		bool							hasPass;
 		bool							isRegistered;
 		std::string						connectionPass;		// connection password set on registration
-		std::map<std::string, Channel>	activeChannels;
+		std::map<std::string, Channel *>	activeChannels;
 		
 };
 

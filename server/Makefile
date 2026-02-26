@@ -6,7 +6,7 @@
 #    By: llarrey <llarrey@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/17 14:54:45 by sconiat           #+#    #+#              #
-#    Updated: 2026/02/12 13:49:57 by llarrey          ###   ########.fr        #
+#    Updated: 2026/02/26 12:47:42 by llarrey          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,7 @@ SRC_DIR		= .
 OBJ_DIR 	= obj
 INC_DIR 	= ../includes/
 
-SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp Message.cpp epoll_helper.cpp
+SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp Message.cpp epoll_helper.cpp server_utils.cpp
 SRC			:= $(addprefix $(SRC_DIR)/, $(SRC))
 
 OBJ			= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))

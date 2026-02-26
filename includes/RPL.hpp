@@ -30,19 +30,18 @@ class RPL
 		static std::string	rplEndOfNames( const std::string &, const std::string & );
 
 		static std::string	errNeedMoreParams( const std::string & );
-		static std::string	errNotOnChannel( const std::string &, const std::string & );
+		static std::string	errNotOnChannel( const std::string &, const std::string &);
 		static std::string	errChanOpPrivsNeeded( const std::string &, const std::string & );
 		static std::string	errNoChanModes( const std::string & );
 		static std::string	errChannelIsFull( const std::string &, const std::string & );
 		static std::string	errInviteOnlyChan( const std::string &, const std::string & );
 		static std::string	errBadChannelKey( const std::string &, const std::string & );
 		static std::string	errNoNickNameGiven( void );
-		static std::string	errErroneusNickname( void );
+		static std::string	errErroneusNickname( std::string const & );
 		static std::string	errNickNameInUse( const std::string & );
 		static std::string	errAlreadyRegistred( void );
+		static std::string	errUserNotInChannel( const std::string &, const std::string & );
 		static std::string	errNoSuchChannel( const std::string & );
-		static std::string			errUserNotInChannel( const std::string &, const std::string & );
-
 
 };
 
