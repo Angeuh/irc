@@ -3,17 +3,17 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: llarrey <llarrey@student.42.fr>            +#+  +:+       +#+         #
+#    By: sconiat <sconiat@student.42.fr>            +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/10/17 14:54:45 by sconiat           #+#    #+#              #
-#    Updated: 2026/02/12 13:49:57 by llarrey          ###   ########.fr        #
+#    Updated: 2026/02/26 14:31:53 by sconiat          ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 CXX			= c++
 CXXFLAGS	= -Wall -Werror -Wextra -g3 -std=c++98 -MMD
 
-NAME		= SERVER
+NAME		= ircserv
 
 SRC_DIR		= .
 OBJ_DIR 	= obj

@@ -106,7 +106,6 @@ void	Message::parseMessage()
 	unsigned long	i = 0;
 	unsigned long	tokenStart = 0;
 
-	std::cout << "START PARSING : " << this->rawMessage.length() << std::endl;
 	while (i < this->rawMessage.length())
 	{
 		// std::cout << "[STATE=" << state << "] i=" << i;
@@ -176,20 +175,12 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case END:
-			std::cout << "ENTERING END" << std::endl;
-			if (!(this->rawMessage[i] == '\n' || this->rawMessage[i] == '\r')) {
-				std::cout << "okkkkkkkk" << std::endl;
+			if (!(this->rawMessage[i] == '\n' || this->rawMessage[i] == '\r'))
 				throw ParsingError();
-			}
-			if (this->rawMessage[i] == '\r' && (i + 1 == this->rawMessage.length() || this->rawMessage[i + 1] != '\n')) {
-				std::cout << "two\n";
+			if (this->rawMessage[i] == '\r' && (i + 1 == this->rawMessage.length() || this->rawMessage[i + 1] != '\n'))
 				throw ParsingError();
-			}
-			while (i < this->rawMessage.length()) {
-				std::cout << "skip";
+			while (i < this->rawMessage.length())
 				i++;
-			}
-			std::cout << "PARSING FINISHED" << std::endl;
 			break;
 		}
 	}

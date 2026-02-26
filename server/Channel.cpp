@@ -65,7 +65,7 @@ bool	Channel::isOnChannel( const ClientConnection &user )
 
 bool	Channel::isFull()
 {
-	return (hasLimit && this->users.size() == limit);
+	return (hasLimit && this->users.size() >= limit);
 }
 
 std::string	Channel::getName() const
