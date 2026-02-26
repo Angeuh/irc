@@ -48,6 +48,7 @@ class Channel
 		void				setKey( const std::string & );
 		unsigned long		getLimit() const;
 		void				setLimit( const unsigned long );
+		ClientConnection*	getUserByNick( const std::string & );
 };
 
 #endif

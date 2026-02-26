@@ -103,3 +103,14 @@ void	Channel::setLimit( const unsigned long newLimit )
 	this->limit = newLimit;
 }
 
+ClientConnection* Channel::getUserByNick(const std::string &nick)
+{
+	for (std::vector<ClientConnection>::iterator it = users.begin();
+		 it != users.end();
+		 ++it)
+	{
+		if (it->username == nick)
+			return &(*it);
+	}
+	return NULL;
+}

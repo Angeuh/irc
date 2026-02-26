@@ -106,6 +106,7 @@ void	Message::parseMessage()
 	unsigned long	i = 0;
 	unsigned long	tokenStart = 0;
 
+	std::cout << "START PARSING : " << this->rawMessage.length() << std::endl;
 	while (i < this->rawMessage.length())
 	{
 		// std::cout << "[STATE=" << state << "] i=" << i;
@@ -121,16 +122,21 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case PREFIX:
-			readUntilDelimiter(this->rawMessage, i, " ");
+			readUntilDelimiter(this->rawMessage, i, " \n");
 			makeToken(tokenStart, i, this->prefix, this->rawMessage);
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n')
+				state = END;
 			state = COMMAND;
 			skipSpaces(this->rawMessage, i);
 			tokenStart = i;
 			break;
 		case COMMAND:
-			readUntilDelimiter(this->rawMessage, i, "\r ");
-			makeToken(tokenStart, i, this->commandToken, this->rawMessage);
-			if (this->rawMessage[i] == '\r') {
+			readUntilDelimiter(this->rawMessage, i, "\r \n");
+			if (this->rawMessage[tokenStart] == '/')
+				makeToken(tokenStart + 1, i, this->commandToken, this->rawMessage);
+			else
+				makeToken(tokenStart, i, this->commandToken, this->rawMessage);
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
 				state = PARAMS;
@@ -143,10 +149,10 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case PARAMS:
-			readUntilDelimiter(this->rawMessage, i, " :\r");
+			readUntilDelimiter(this->rawMessage, i, " :\r\n");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
-			if (this->rawMessage[i] == '\r') {
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
 				skipSpaces(this->rawMessage, i);
@@ -158,7 +164,7 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case TRAILING:
-			readUntilDelimiter(this->rawMessage, i, "\r");
+			readUntilDelimiter(this->rawMessage, i, "\r\n");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
 			this->hasTrailing = true;
@@ -170,12 +176,20 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case END:
-			if (this->rawMessage[i] != '\r' || i + 1 == this->rawMessage.length())
+			std::cout << "ENTERING END" << std::endl;
+			if (!(this->rawMessage[i] == '\n' || this->rawMessage[i] == '\r')) {
+				std::cout << "okkkkkkkk" << std::endl;
 				throw ParsingError();
-			if (this->rawMessage[i + 1] != '\n')
+			}
+			if (this->rawMessage[i] == '\r' && (i + 1 == this->rawMessage.length() || this->rawMessage[i + 1] != '\n')) {
+				std::cout << "two\n";
 				throw ParsingError();
-			while (i < this->rawMessage.length())
+			}
+			while (i < this->rawMessage.length()) {
+				std::cout << "skip";
 				i++;
+			}
+			std::cout << "PARSING FINISHED" << std::endl;
 			break;
 		}
 	}

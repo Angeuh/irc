@@ -235,7 +235,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 
 void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel, std::string &validModes, std::string &validParams )
 {
-	unsigned long	i;
+	ClientConnection	*newOp;
 
 	switch (mode) {
 	case 'k':
@@ -252,17 +252,18 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 		}
 		break;
 	case 'o':
-		i = 0;
-
-		while (i < channel.users.size() && channel.users[i].username != param)
-			i++;
+		newOp = channel.getUserByNick(param);
+		if (newOp == NULL) {
+			sendMessage(user, RPL::errUserNotInChannel(param, channel.getName()));
+			return ;
+		}
 		if (sign == '+') {
-			channel.insertOperator(channel.users[i]);
+			channel.insertOperator(*newOp);
 			std::cout << "OPERATOR SET FOR : " << param << std::endl;
 			validModes += "+o";
 			validParams += param;
 		} else {
-			channel.removeOperator(channel.users[i]);
+			channel.removeOperator(*newOp);
 			std::cout << "OPERATOR REMOVED FOR : " << param << std::endl;
 			validModes += "-o";
 			validParams += param;
@@ -315,6 +316,7 @@ bool	modeNeedParam( char mode, char sign )
 
 // mode k (key when +k), o (nick), l (limit when +l), t (no parameter), i (no parameter)
 // params[0] = channel, params[1] = modes (+kl-o), params[2 et plus] = paramètres
+// there is a maximum limit of three (3) changes per command for modes that take a parameter
 void	Server::modeCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[MODE]" << std::endl;
@@ -457,29 +459,44 @@ void Server::callRecv(int fd)
 {
 	char	buffer[4096];
     int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
+	std::cout << "call to recv : " << bytesReceived << std::endl;
 	size_t	pos;
 
-    if (bytesReceived <= 0)
-    {
-        removeFromEpoll(fd);
-        close(fd);
-        clients.erase(fd);
-        return ;
-    }
-	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
-	pos = this->clients[fd].readBuffer.find("\r\n");
-	while (pos != std::string::npos)
+	if (bytesReceived <= 0)
 	{
-		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
-		this->clients[fd].readBuffer.erase(0, pos + 2);
-		Message	msg(line);
-		std::cout << msg << std::endl;
-		if (this->clients[fd].isRegistered == true)
-			handleClientMessage(msg, this->clients[fd]);
-		else 
-			handleRegistration(msg, this->clients[fd]);
-		pos = this->clients[fd].readBuffer.find("\r\n");
+		removeFromEpoll(fd);
+		close(fd);
+		clients.erase(fd);
+		std::cout << "Client " << fd << " disconnected" << std::endl;
+		return ;
 	}
+	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
+	pos = this->clients[fd].readBuffer.find("\n");
+	int	i = 0;
+	while (pos != std::string::npos && i < 10)
+	{
+		i++;
+		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 1);
+		if (line.length() > 512) {
+			std::cout << "Message too long" << std::endl;
+			return ;
+		}
+		this->clients[fd].readBuffer.erase(0, pos + 1);
+		try {
+			Message	msg(line);
+			std::cout << msg << std::endl;
+			if (this->clients[fd].isRegistered == true)
+				handleClientMessage(msg, this->clients[fd]);
+			else 
+				handleRegistration(msg, this->clients[fd]);	
+		} catch(const Message::ParsingError& e) {
+			std::cerr << e.what() << '\n';
+			return ;
+		}
+		pos = this->clients[fd].readBuffer.find("\n");
+	}
+	if (i > 10)
+		std::cout << "TOO MUCH";
 }
 
 void Server::run()

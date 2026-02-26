@@ -161,8 +161,9 @@ std::string	RPL::errUnknownMode( const char mode )
 	return (":" + std::string(SERVERNAME) + " 472 " + mode + " :is unknown mode char to me\r\n");
 }
 
-//channel
-std::string	RPL::errUserNotInChannel( const std::string &channel )
+//username, channel
+std::string	RPL::errUserNotInChannel( const std::string &username, const std::string &channel )
 {
-	return (":" + std::string(SERVERNAME) + " 472 " + channel + " :They aren't on that channel\r\n");
+	return (":" + std::string(SERVERNAME) + " 441 " + username + " " + channel + " :They aren't on that channel\r\n");
 }
+
