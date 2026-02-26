@@ -1,0 +1,16 @@
+<< CAP LS
+<< PASS 123
+<< NICK lucas
+<< USER llarrey llarrey localhost :Lucas Larrey
+>> :localhost 001 lucas :Welcome to our ft_irc
+<< MODE lucas +i
+<< JOIN #1
+>> :lucas!user@localhost JOIN #1
+>> :localhost 331 lucas #1 :
+>> :localhost 353 lucas = #1 :@lucas 
+>> :localhost 366 lucas #1 :End of /NAMES list
+<< MODE #1
+<< PRIVMSG #1 :test
+<< PART #1
+>> :lucas!user@localhost PART #1 :#1:LEAVING
+<< PING localhost

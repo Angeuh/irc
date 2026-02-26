@@ -8,7 +8,8 @@ Channel::Channel( const std::string & n, ClientConnection &user ) :
 	inviteOnly(false),
 	hasTopic(false),
 	hasKey(false),
-	hasLimit(false)
+	hasLimit(false),
+	hasTopicRestriction(false)
 {
 	this->users.push_back(user);
 	this->operators.push_back(user);
@@ -29,18 +30,6 @@ void	Channel::insertUser( const ClientConnection &user )
 	this->users.push_back(user);
 }
 
-ClientConnection* Channel::getUserByNick(const std::string &nick)
-{
-	for (std::vector<ClientConnection>::iterator it = users.begin();
-		 it != users.end();
-		 ++it)
-	{
-		if (it->username == nick)
-			return &(*it);
-	}
-	return NULL;
-}
-
 void	Channel::removeUser( const ClientConnection &user )
 {
 	std::vector<ClientConnection>::iterator it;
@@ -48,6 +37,20 @@ void	Channel::removeUser( const ClientConnection &user )
 	it = std::find(this->users.begin(), this->users.end(), user);
 	if (it != this->users.end())
 		this->users.erase(it);
+}
+
+void	Channel::insertOperator( const ClientConnection &op )
+{
+	this->operators.push_back(op);
+}
+
+void	Channel::removeOperator( const ClientConnection &op )
+{
+	std::vector<ClientConnection>::iterator it;
+	
+	it = std::find(this->operators.begin(), this->operators.end(), op);
+	if (it != this->operators.end())
+		this->operators.erase(it);
 }
 
 bool	Channel::isOperator( const ClientConnection &user )
@@ -60,14 +63,9 @@ bool	Channel::isOnChannel( const ClientConnection &user )
 	return (std::find(this->users.begin(), this->users.end(), user) != this->users.end());
 }
 
-bool	Channel::isInviteOnly()
-{
-	return (this->inviteOnly);
-}
-
 bool	Channel::isFull()
 {
-	return (hasLimit && this->users.size() == limit);
+	return (hasLimit && this->users.size() >= limit);
 }
 
 std::string	Channel::getName() const
@@ -93,4 +91,26 @@ std::string	Channel::getKey() const
 void	Channel::setKey( const std::string &newKey )
 {
 	this->key = newKey;
+}
+
+unsigned long	Channel::getLimit() const
+{
+	return (this->limit);
+}
+
+void	Channel::setLimit( const unsigned long newLimit )
+{
+	this->limit = newLimit;
+}
+
+ClientConnection* Channel::getUserByNick(const std::string &nick)
+{
+	for (std::vector<ClientConnection>::iterator it = users.begin();
+		 it != users.end();
+		 ++it)
+	{
+		if (it->username == nick)
+			return &(*it);
+	}
+	return NULL;
 }

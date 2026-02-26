@@ -119,6 +119,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 {
     if (channelName.empty()) {
 		// sendMessage(user, RPL::errBadChanMask()); // À vérifier
+		std::cout << "[JOIN] Channel empty ?" << std::endl;
 		return ;
 	}
 	if (channelName[0] != '#')
@@ -127,33 +128,33 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	std::map<std::string, Channel>::iterator	it = this->channels.find(channelName);
 	if (it == this->channels.end()) {
 		this->channels[channelName] = Channel(channelName, user);
+		std::cout << "[JOIN] User " << user.username << " created channel " << channelName << std::endl;
 		welcomeToChannel(this->channels[channelName], user);
 		user.activeChannels[channelName] = &this->channels[channelName];
 		return ;
 	}
 	else {
 		Channel	&channel = it->second;
-		if (channel.isInviteOnly()) {
+		if (channel.inviteOnly == true) {
 			sendMessage(user, RPL::errInviteOnlyChan(user.username, channel.getName()));
+			std::cout << "[JOIN] Invite only chan" << std::endl;
 			return ;
 		} else if (channel.isFull()) {
 			sendMessage(user, RPL::errChannelIsFull(user.username, channel.getName()));
+			std::cout << "[JOIN] Channel is full" << std::endl;
 			return ;
 		} else if (channel.hasKey && ((hasKey && key != channel.getKey()) || (!hasKey))) {
 			sendMessage(user, RPL::errBadChannelKey(user.username, channel.getName()));
+			std::cout << "[JOIN] Bad channel key" << std::endl;
 			return ;
 		} else {
 			channel.insertUser(user);
+			std::cout << "[JOIN] User " << user.username << " inserted in channel " << channel.getName() << std::endl;
 			welcomeToChannel(channel, user);
 			user.activeChannels[channelName] = &channel;
 		}
 	}		
 }
-
-// void	Server::quitOneChannel( std::set<std::string> &userChannels, ClientConnection &user )
-// {
-
-// }
 
 void	Server::quitAllChannels( ClientConnection &user )
 {
@@ -170,9 +171,11 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	std::vector<std::string>	keys;
 
 	std::cout << "[JOIN]" << std::endl;
-	if (msg.params.size() == 0)
-		sendMessage(user, RPL::errNeedMoreParams("USER"));
-	else if (msg.params.size() >= 1)
+	if (msg.params.size() == 0) {
+		sendMessage(user, RPL::errNeedMoreParams("JOIN"));
+		std::cout << "[JOIN] Need more params" << std::endl;
+		return ;
+	} else if (msg.params.size() >= 1)
 		channels = split(msg.params[0].value);
 	if (msg.params.size() >= 2)
 		keys = split(msg.params[1].value);
@@ -307,30 +310,183 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[TOPIC]" << std::endl;
 	if (msg.params.size() == 0) {
-		sendMessage(user, RPL::errNeedMoreParams("JOIN"));
+		sendMessage(user, RPL::errNeedMoreParams("TOPIC"));
+		std::cout << "[TOPIC] Need more params" << std::endl;
 		return ;
 	}
 	
 	Channel	&channel = *user.activeChannels[msg.params[0].value];
 	if (msg.params.size() == 1) {
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
-	} else if (channel.isOperator(user) == false) {
+		std::cout << "[TOPIC] Topic send" << std::endl;
+	} else if (channel.hasTopicRestriction && channel.isOperator(user) == false) {
 		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+		std::cout << "[TOPIC] Chanop privilege is needed" << std::endl;
 	} else if (msg.params[1].value.empty()) {
 		channel.getTopic() = "";
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+		std::cout << "[TOPIC] Topic removed" << std::endl;
 	} else {
 		channel.setTopic(msg.params[1].value);
 		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value));
+		std::cout << "[TOPIC] Topic changed to" << msg.params[1].value << std::endl;
 	}
 }
 
-//differenciate channel mode and user mode
+static bool	isNumber( std::string str )
+{
+	for (size_t i = 0; i < str.length(); i++)
+		if (str[i] < '0' || str[i] > '9')
+			return (false);
+	return (true);
+}
+
+void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel, std::string &validModes, std::string &validParams )
+{
+	ClientConnection	*newOp;
+	long				limit;
+
+	switch (mode) {
+	case 'k':
+		if (sign == '+') {
+			channel.hasKey = true;
+			channel.setKey(param);
+			std::cout << "KEY SET TO : " << param << std::endl;
+			validModes += "k";
+			validParams += " ";
+			validParams += param;
+		} else {
+			channel.hasKey = false;
+			std::cout << "KEY REMOVED" << std::endl;
+			validModes += "k";
+		}
+		break;
+	case 'o':
+		newOp = channel.getUserByNick(param);
+		if (newOp == NULL) {
+			sendMessage(user, RPL::errUserNotInChannel(param, channel.getName()));
+			std::cout << "[MODE] User not in channel" << std::endl;
+			return ;
+		}
+		if (sign == '+') {
+			channel.insertOperator(*newOp);
+			std::cout << "OPERATOR SET FOR : " << param << std::endl;
+			validModes += "o";
+			validParams += " ";
+			validParams += param;
+		} else {
+			channel.removeOperator(*newOp);
+			std::cout << "OPERATOR REMOVED FOR : " << param << std::endl;
+			validModes += "o";
+			validParams += " ";
+			validParams += param;
+		}
+		break;
+	case 'l':
+		if (sign == '+') {
+			if (!isNumber(param))
+				return ;
+			limit = atoi(param.c_str());
+			if (limit <= 0)
+				return ;
+			channel.setLimit(limit);
+			channel.hasLimit = true;
+			std::cout << "LIMIT SET TO : " << limit << std::endl;
+			validModes += "l";
+			validParams += " ";
+			validParams += param;
+		} else {
+			channel.hasLimit = false;
+			std::cout << "LIMIT REMOVED" << std::endl;
+			validModes += "l";
+		}
+		break;
+	case 't':
+		if (sign == '+') {
+			channel.hasTopicRestriction = true;
+			std::cout << "TOPIC RESTRICTION SET" << std::endl;
+			validModes += "t";
+		} else {
+			channel.hasTopicRestriction = false;
+			std::cout << "TOPIC RESTRICTION REMOVED" << std::endl;
+			validModes += "t";
+		}
+		break;
+	case 'i':
+		if (sign == '+') {
+			channel.inviteOnly = true;
+			std::cout << "INVITE ONLY SET" << std::endl;
+			validModes += "i";
+		} else {
+			channel.inviteOnly = false;
+			std::cout << "INVITE ONLY REMOVED" << std::endl;
+			validModes += "i";
+		}
+		break;
+	default:
+		sendMessage(user, RPL::errUnknownMode(mode));
+	}
+}
+
+bool	modeNeedParam( char mode, char sign )
+{
+	return ((mode == 'k' && sign == '+') || mode == 'o' || (mode == 'l' && sign == '+'));
+}
+
+// mode k (key when +k), o (nick), l (limit when +l), t (no parameter), i (no parameter)
+// params[0] = channel, params[1] = modes (+kl-o), params[2 et plus] = paramètres
+// there is a maximum limit of three (3) changes per command for modes that take a parameter
 void	Server::modeCmd( Message &msg, ClientConnection &user )
 {
 	std::cout << "[MODE]" << std::endl;
-	(void) msg;
-	(void) user;
+	if (msg.params.size() == 0) {
+		sendMessage(user, RPL::errNeedMoreParams("MODE"));
+		std::cout << "[MODE] Need more params" << std::endl;
+		return ;
+	}
+	std::string	channelName = msg.params[0].value;
+	if (this->channels.find(channelName) == this->channels.end()) {
+		if (channelName.empty() == false && channelName[0] == '#') {
+			sendMessage(user, RPL::errNoSuchChannel(channelName));
+			std::cout << "[MODE] No such channel" << std::endl;
+		}
+		return ;
+	}
+	if (this->channels[channelName].isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(channelName, user.username));
+		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
+		return ;
+	}
+	if (msg.params.size() == 1) {
+		sendMessage(user, RPL::rplChannelModeIs(user.username, this->channels[channelName]));
+		std::cout << "[MODE] Mode query send" << std::endl;
+		return ;
+	}
+	char			sign = '+';
+	unsigned long	paramIndex = 2;
+	char			mode;
+	std::string		validModes;
+	std::string		validParams;
+
+	for (size_t i = 0; i < msg.params[1].value.size(); i++)
+	{
+		mode = msg.params[1].value[i];
+		if (mode == '+' || mode == '-') // no sign = + et si le signe change ça s'applique à tous les modes suivants
+			sign = mode;
+		else if (modeNeedParam(mode, sign)) {
+			if (paramIndex >= msg.params.size()) {
+				sendMessage(user, RPL::errNeedMoreParams("MODE"));
+				std::cout << "[MODE] Need more params" << std::endl;
+				return ;
+			}
+			applyMode(mode, sign, msg.params[paramIndex].value, user, this->channels[channelName], validModes, validParams);
+			paramIndex++;
+		} else {
+			applyMode(mode, sign, channelName, user, this->channels[channelName], validModes, validParams);
+		}
+	}
+	broadcastingMessage(user, "MODE", RPL::ircMessageContent(user.username, "MODE", channelName, validModes + validParams));
+	std::cout << "[MODE] Broadcasted changes : " << validModes + validParams << std::endl;
 }
 
 std::string Server::generateFreeNick(const std::string &base)
@@ -358,56 +514,60 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
 	case NICK:
-		{
-        std::string wanted = msg.params[0].value;
-
-        if (msg.params.size() == 0)
+		if (msg.params.size() == 0) {
 			sendMessage(user, RPL::errNoNickNameGiven());
-        else if (verifNickname(wanted) == FAILURE)
-			sendMessage(user, RPL::errErroneusNickname(msg.params[1].value));
-        else if (isNicknameAvailable(clients, wanted) == FAILURE)
-        {
-            wanted = generateFreeNick(wanted);
+			std::cout << "[NICK] No nickname given" << std::endl;
+		} else if (verifNickname(msg.params[0].value) == FAILURE) {
+			sendMessage(user, RPL::errErroneusNickname(msg.params[0].value));
+			std::cout << "[NICK] Erroneus nickname" << std::endl;
+		} else if (isNicknameAvailable(this->clients, msg.params[0].value) == FAILURE) {
+			std::string wanted = generateFreeNick(msg.params[0].value);
             if (wanted.empty())
             {
 				sendMessage(user, RPL::errNickNameInUse(wanted));
                 break;
             }
             sendMessage(user, RPL::errNickNameInUse(wanted));
-        }
-        user.username = wanted;
-       	user.hasNick = true;
-        break;
-    }
+			std::cout << "[NICK] Nickname in use" << std::endl;
+		} else {
+			user.username = msg.params[0].value;
+			user.hasNick = true;
+			std::cout << "[NICK validated] " << user.username << std::endl;
+		}
+		break;
 	case USER:
-		if (msg.params.size() != 4)
+		if (msg.params.size() != 4) {
 			sendMessage(user, RPL::errNeedMoreParams("USER"));
-		else if (user.isRegistered)
+			std::cout << "[USER] Need more params" << std::endl;
+		} else if (user.isRegistered) {
 			sendMessage(user, RPL::errAlreadyRegistred());
-		else {
+			std::cout << "[USER] Already registred" << std::endl;
+		} else {
 			user.name = msg.params.back().value;
 			user.hasUser = true;
 			std::cout << "[USER validated] " << user.name << std::endl;
 		}
 		break;
 	case PASS:
-		if (msg.params.size() == 0)
+		if (msg.params.size() == 0) {
 			sendMessage(user, RPL::errNeedMoreParams("PASS"));
-		else if (user.isRegistered)
+			std::cout << "[PASS] Need more params" << std::endl;
+		} else if (user.isRegistered) {
 			sendMessage(user, RPL::errAlreadyRegistred());
-		else {
-			user.connectionPass = msg.params[0].value;
+			std::cout << "[PASS] Already registred" << std::endl;
+		} else if (msg.params[0].value != this->password) {
+			std::cout << "[PASS] Bad password (skip, no rpl)" << std::endl; //à vérifier car pass doit arriver avant nick et user
+			return ;
+		} else {
 			user.hasPass = true;
-			std::cout << "[PASS validated] " << user.connectionPass << std::endl;
+			std::cout << "[PASS validated] " << std::endl;
 		}
 		break;
 	}
-	if (user.hasNick && user.hasUser && user.hasPass)
-	{
+	if (user.hasNick && user.hasUser && user.hasPass) {
 		std::cout << std::endl << "REGISTRATION OK :" << std::endl;
 		std::cout << "Client nickname : " << user.username << std::endl;
 		std::cout << "Client username : " << user.name << std::endl;
-		std::cout << "Client password : " << user.connectionPass << std::endl;
 		std::cout << "Client fd : " << user.fd << std::endl;
 		user.isRegistered = true;
 		sendMessage(user, RPL::rplWelcome(user.username));
@@ -446,25 +606,35 @@ void Server::callRecv(int fd)
     int 	bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
 	size_t	pos;
 
-    if (bytesReceived <= 0)
-    {
-        removeFromEpoll(fd);
-        close(fd);
-        clients.erase(fd);
-        return ;
-    }
+	if (bytesReceived <= 0)
+	{
+		removeFromEpoll(fd);
+		close(fd);
+		clients.erase(fd);
+		std::cout << "Client " << fd << " disconnected" << std::endl;
+		return ;
+	}
 	this->clients[fd].readBuffer += std::string(buffer, bytesReceived);
 	pos = this->clients[fd].readBuffer.find("\r\n");
 	while (pos != std::string::npos)
 	{
 		std::string	line = this->clients[fd].readBuffer.substr(0, pos + 2);
+		if (line.length() > 512) {
+			std::cout << "Message too long" << std::endl;
+			return ;
+		}
 		this->clients[fd].readBuffer.erase(0, pos + 2);
-		Message	msg(line);
-		std::cout << msg << std::endl;
-		if (this->clients[fd].isRegistered == true)
-			handleClientMessage(msg, this->clients[fd]);
-		else 
-			handleRegistration(msg, this->clients[fd]);
+		try {
+			Message	msg(line);
+			std::cout << msg << std::endl;
+			if (this->clients[fd].isRegistered == true)
+				handleClientMessage(msg, this->clients[fd]);
+			else 
+				handleRegistration(msg, this->clients[fd]);	
+		} catch(const Message::ParsingError& e) {
+			std::cerr << e.what() << std::endl;
+			return ;
+		}
 		pos = this->clients[fd].readBuffer.find("\r\n");
 	}
 }

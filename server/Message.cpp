@@ -125,16 +125,21 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case PREFIX:
-			readUntilDelimiter(this->rawMessage, i, " ");
+			readUntilDelimiter(this->rawMessage, i, " \n");
 			makeToken(tokenStart, i, this->prefix, this->rawMessage);
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n')
+				state = END;
 			state = COMMAND;
 			skipSpaces(this->rawMessage, i);
 			tokenStart = i;
 			break;
 		case COMMAND:
-			readUntilDelimiter(this->rawMessage, i, "\r ");
-			makeToken(tokenStart, i, this->commandToken, this->rawMessage);
-			if (this->rawMessage[i] == '\r') {
+			readUntilDelimiter(this->rawMessage, i, "\r \n");
+			if (this->rawMessage[tokenStart] == '/')
+				makeToken(tokenStart + 1, i, this->commandToken, this->rawMessage);
+			else
+				makeToken(tokenStart, i, this->commandToken, this->rawMessage);
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
 				state = PARAMS;
@@ -147,10 +152,10 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case PARAMS:
-			readUntilDelimiter(this->rawMessage, i, " :\r");
+			readUntilDelimiter(this->rawMessage, i, " :\r\n");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
-			if (this->rawMessage[i] == '\r') {
+			if (this->rawMessage[i] == '\r' || this->rawMessage[i] == '\n') {
 				state = END;
 			} else if (this->rawMessage[i] == ' ') {
 				skipSpaces(this->rawMessage, i);
@@ -165,7 +170,7 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case TRAILING:
-			readUntilDelimiter(this->rawMessage, i, "\r");
+			readUntilDelimiter(this->rawMessage, i, "\r\n");
 			makeToken(tokenStart, i, token, this->rawMessage);
 			this->params.push_back(token);
 			this->hasTrailing = true;
@@ -177,9 +182,9 @@ void	Message::parseMessage()
 			tokenStart = i;
 			break;
 		case END:
-			if (this->rawMessage[i] != '\r' || i + 1 == this->rawMessage.length())
+			if (!(this->rawMessage[i] == '\n' || this->rawMessage[i] == '\r'))
 				throw ParsingError();
-			if (this->rawMessage[i + 1] != '\n')
+			if (this->rawMessage[i] == '\r' && (i + 1 == this->rawMessage.length() || this->rawMessage[i + 1] != '\n'))
 				throw ParsingError();
 			while (i < this->rawMessage.length())
 				i++;

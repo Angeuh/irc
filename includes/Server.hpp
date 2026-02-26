@@ -33,12 +33,13 @@ class Server
         std::string generateFreeNick(const std::string &base);
 
         void	joinCmd( Message&, ClientConnection& );
-		void	joinOneChannel( ClientConnection &, std::string &, std::string &, bool );
-		void	welcomeToChannel( Channel &, ClientConnection & );
+		void	joinOneChannel( ClientConnection&, std::string&, std::string&, bool );
+		void	welcomeToChannel( Channel&, ClientConnection& );
 		void	kickCmd( Message&, ClientConnection& );
 		void	inviteCmd( Message&, ClientConnection& );
 		void	topicCmd( Message&, ClientConnection& );
 		void	modeCmd( Message& , ClientConnection& );
+		void	applyMode( char, char, std::string, ClientConnection&, Channel&, std::string &, std::string & );
 		void	quitAllChannels( ClientConnection& );
         void    partCmd(Message &, ClientConnection &);
         void    quitChannel(ClientConnection &, std::string &, std::string &); 
@@ -57,8 +58,8 @@ class Server
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?
         void	modifyEpoll(int fd, uint32_t events);	// pass to private ?
         void	removeFromEpoll(int fd);				// pass to private ?
-		void 	broadcastingMessage( ClientConnection &, const std::string &, const std::string & );
-		void	sendMessage( ClientConnection &, const std::string & );
+		void 	broadcastingMessage( ClientConnection&, const std::string&, const std::string& );
+		void	sendMessage( ClientConnection&, const std::string& );
 
         static void SignalHandler(int signum);
         class PollError : public std::exception {
