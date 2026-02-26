@@ -128,11 +128,11 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 	if (it == this->channels.end()) {
 		this->channels[channelName] = Channel(channelName, user);
 		welcomeToChannel(this->channels[channelName], user);
-		user.activeChannels[channelName] = this->channels[channelName];
+		user.activeChannels[channelName] = &this->channels[channelName];
 		return ;
 	}
 	else {
-		Channel	channel = it->second;
+		Channel	&channel = it->second;
 		if (channel.isInviteOnly()) {
 			sendMessage(user, RPL::errInviteOnlyChan(user.username, channel.getName()));
 			return ;
@@ -145,7 +145,7 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 		} else {
 			channel.insertUser(user);
 			welcomeToChannel(channel, user);
-			user.activeChannels[channelName] = channel;
+			user.activeChannels[channelName] = &channel;
 		}
 	}		
 }
@@ -155,24 +155,10 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 
 // }
 
-static std::vector<std::string> split( const std::string& str ) {
-	std::vector<std::string>	res;
-	size_t 						start = 0;
-	size_t						end = str.find(',');
-
-	while (end != std::string::npos) {
-		res.push_back(str.substr(start, end - start));
-		start = end + 1;
-		end = str.find(',', start);
-	}
-	res.push_back(str.substr(start));
-	return (res);
-}
-
 void	Server::quitAllChannels( ClientConnection &user )
 {
-	for (std::map<std::string, Channel>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
-		it->second.removeUser(user);
+	for (std::map<std::string, Channel *>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
+		it->second->removeUser(user);
 	user.activeChannels.clear();
 }
 
@@ -202,41 +188,27 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	}
 }
 
-void Server::partCmd(Message &msg, ClientConnection &user)
+void Server::quitChannel(ClientConnection &user, std::string &channelName, std::string &reason) 
 {
-	//need to make a list of channels
-	std::vector<std::string> listChannels;
-
-/* 	for(size_t i = 0; i < msg.params.size(); i++)
-	{
-		listChannels = split(msg.params)
-	}
- */
-	if (msg.params.size() < 1)
-	{
-		sendMessage(user, RPL::errNeedMoreParams("PART"));
-		return;
-	}
-	const std::string &channelName = msg.params[0].value;
 	std::map<std::string, Channel>::iterator it = channels.find(channelName);
 	if (it == channels.end())
 	{
 		sendMessage(user, RPL::errNoSuchChannel(channelName));
 		return;
 	}
-	Channel &channel = it->second;
-	if (!channel.isOnChannel(user))
+	Channel *channel = &it->second;
+	if (!channel->isOnChannel(user))
 	{
 		sendMessage(user, RPL::errNotOnChannel(user.username, channelName));
 		return;
 	}
-	std::string reason;
-	if (msg.params.size() >= 2)
-		reason = msg.params[1].value;
 	std::string content = channelName;
 	if (!reason.empty())
-		content += " :" + reason;
-
+		content += reason;
+	else
+	{
+		content += ":LEAVING";
+	}
 	std::string partMsg = RPL::ircMessageContent(
 		user.username,
 		"PART",
@@ -245,11 +217,28 @@ void Server::partCmd(Message &msg, ClientConnection &user)
 	);
 	broadcastingMessage(user, "PART", partMsg);
 
-	channel.removeUser(user);
+	channel->removeUser(user);
 	user.activeChannels.erase(channelName);
-	//i dont know if we delete if empty or not but if we do it here, need to check
-	if (channel.users.empty())
+	if (channel->users.empty())
 		channels.erase(it);
+}
+
+
+void Server::partCmd(Message &msg, ClientConnection &user)
+{
+	//need to make a list of channels
+	std::vector<std::string> listChannels;
+	if (msg.params.size() < 1)
+	{
+		sendMessage(user, RPL::errNeedMoreParams("PART"));
+		return;
+	}
+	listChannels = split(msg.params[0].value);
+	for(size_t j = 0; j < listChannels.size(); j++)
+	{
+		std::string reason = msg.params.size() > 1 ? msg.params[1].value : "";
+		quitChannel(user, listChannels[j], reason);
+	}
 }
 
 // format : KICK <channel, ...> <nick, ...> [<reason>]
@@ -300,7 +289,6 @@ void Server::kickCmd(Message &msg, ClientConnection &user)
 		channelName,
 		content
 	);
-
 	broadcastingMessage(user, "KICK", kickMsg);
 	channel.removeUser(*target);
 	target->activeChannels.erase(channelName);
@@ -323,7 +311,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 		return ;
 	}
 	
-	Channel	&channel = user.activeChannels[msg.params[0].value];
+	Channel	&channel = *user.activeChannels[msg.params[0].value];
 	if (msg.params.size() == 1) {
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
 	} else if (channel.isOperator(user) == false) {
@@ -343,51 +331,6 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 	std::cout << "[MODE]" << std::endl;
 	(void) msg;
 	(void) user;
-}
-
-static int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
-{
-	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
-    {
-        if (it->second.username == nick && it->second.isRegistered == true)
-            return (FAILURE);
-    }
-	return (SUCCESS);
-}
-
-static bool isSpecial(char c) 
-{
-    std::string special = "[]\\`_^{}|";
-    return special.find(c) != std::string::npos;
-}
-
-static int	verifNickname( std::string &nick )
-{
-	//to do
-	(void) nick;
-    std::string special = "[]\\`_^{}|";
-	if (nick.size() > 9 || nick.size() < 1)
-        return (FAILURE);
-
-    char first = nick[0];
-    if (!std::isalpha(first) && !isSpecial(first))
-        return (FAILURE);
-
-    for (size_t i = 1; i < nick.length(); i++) 
-    {
-        char c = nick[i];
-
-        if (!std::isalnum(c) &&!isSpecial(c) && c != '-') 
-            return (FAILURE);
-    }
-	return (SUCCESS);
-}
-
-static std::string itoa(int n)
-{
-    std::ostringstream oss;
-    oss << n;
-    return oss.str();
 }
 
 std::string Server::generateFreeNick(const std::string &base)
@@ -410,7 +353,7 @@ std::string Server::generateFreeNick(const std::string &base)
     return "";
 }
 
-// nick <username> / user <username> <hostname> <servername> <realname> / pass <password>
+// nick <username> / user <username> <	> <servername> <realname> / pass <password>
 void	Server::handleRegistration( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
@@ -486,10 +429,13 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 	case INVITE:
 		inviteCmd(msg, user);
 		break;
+	case PART:
+		partCmd(msg, user);
+		break;
 	case KICK:
 		kickCmd(msg, user);
-		break;
-	case PRIVMSG:
+			break;
+		case PRIVMSG:
 		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "PRIVMSG", msg.params[0].value, msg.params[1].value));
 	}
 }

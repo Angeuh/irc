@@ -8,6 +8,7 @@
 # include "Message.hpp"
 # include "errno.h"
 # include "signal.h"
+# include "utils.hpp"
 # define SERVERNAME "localhost"
 
 class Channel;
@@ -40,6 +41,9 @@ class Server
 		void	modeCmd( Message& , ClientConnection& );
 		void	quitAllChannels( ClientConnection& );
         void    partCmd(Message &, ClientConnection &);
+        void    quitChannel(ClientConnection &, std::string &, std::string &); 
+        bool    checkErrRpl(ClientConnection &, Channel &);
+
 
 
     public:
