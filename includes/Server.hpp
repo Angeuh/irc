@@ -58,7 +58,7 @@ class Server
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?
         void	modifyEpoll(int fd, uint32_t events);	// pass to private ?
         void	removeFromEpoll(int fd);				// pass to private ?
-		void 	broadcastingMessage( ClientConnection&, const std::string&, const std::string& );
+		void 	broadcastingMessage( ClientConnection&, const std::string&, const std::string&, Channel &);
 		void	sendMessage( ClientConnection&, const std::string& );
 
         static void SignalHandler(int signum);

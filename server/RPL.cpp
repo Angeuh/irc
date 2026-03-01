@@ -46,10 +46,10 @@ std::string	RPL::rplNameReply( const std::string &username, Channel &channel )
 {
 	std::string	res = ":" + std::string(SERVERNAME) + " 353 " + username + " = " + channel.getName() + " :";
 	
-	for (std::vector<ClientConnection>::iterator it = channel.users.begin(); it != channel.users.end(); it++) {
-		if (channel.isOperator(*it))
+	for (std::vector<ClientConnection *>::iterator it = channel.users.begin(); it != channel.users.end(); it++) {
+		if (channel.isOperator(**it))
 			res += "@";
-		res += it->username;
+		res += (*it)->username;
 		res += " ";
 	}
 	res += "\r\n";
@@ -165,5 +165,10 @@ std::string	RPL::errUnknownMode( const char mode )
 std::string	RPL::errUserNotInChannel( const std::string &username, const std::string &channel )
 {
 	return (":" + std::string(SERVERNAME) + " 441 " + username + " " + channel + " :They aren't on that channel\r\n");
+}
+
+std::string	RPL::errNotRegistered( const std::string &command )
+{
+	return (":" + std::string(SERVERNAME) + " 451 " + command + " :You have not registered\r\n");
 }
 

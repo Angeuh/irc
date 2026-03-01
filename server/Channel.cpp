@@ -11,8 +11,8 @@ Channel::Channel( const std::string & n, ClientConnection &user ) :
 	hasLimit(false),
 	hasTopicRestriction(false)
 {
-	this->users.push_back(user);
-	this->operators.push_back(user);
+	this->users.push_back(&user);
+	this->operators.push_back(&user);
 }
 
 Channel::~Channel() {
@@ -20,47 +20,47 @@ Channel::~Channel() {
 	this->operators.clear();
 }
 
-bool	Channel::operator==( const Channel other ) const
+bool	Channel::operator==(  Channel other ) const
 {
 	return (this->getName() == other.getName());
 }
 
-void	Channel::insertUser( const ClientConnection &user )
+void	Channel::insertUser(  ClientConnection &user )
 {
-	this->users.push_back(user);
+	this->users.push_back(&user);
 }
 
 void	Channel::removeUser( const ClientConnection &user )
 {
-	std::vector<ClientConnection>::iterator it;
+	std::vector<ClientConnection*>::iterator it;
 	
-	it = std::find(this->users.begin(), this->users.end(), user);
+	it = std::find(this->users.begin(), this->users.end(), &user);
 	if (it != this->users.end())
 		this->users.erase(it);
 }
 
-void	Channel::insertOperator( const ClientConnection &op )
+void	Channel::insertOperator(  ClientConnection &op )
 {
-	this->operators.push_back(op);
+	this->operators.push_back(&op);
 }
 
-void	Channel::removeOperator( const ClientConnection &op )
+void	Channel::removeOperator(  ClientConnection &op )
 {
-	std::vector<ClientConnection>::iterator it;
+	std::vector<ClientConnection*>::iterator it;
 	
-	it = std::find(this->operators.begin(), this->operators.end(), op);
+	it = std::find(this->operators.begin(), this->operators.end(), &op);
 	if (it != this->operators.end())
 		this->operators.erase(it);
 }
 
-bool	Channel::isOperator( const ClientConnection &user )
+bool	Channel::isOperator(  ClientConnection &user )
 {
-	return (std::find(this->operators.begin(), this->operators.end(), user) != this->operators.end());
+	return (std::find(this->operators.begin(), this->operators.end(), &user) != this->operators.end());
 }
 
-bool	Channel::isOnChannel( const ClientConnection &user )
+bool	Channel::isOnChannel(  ClientConnection &user )
 {
-	return (std::find(this->users.begin(), this->users.end(), user) != this->users.end());
+	return (std::find(this->users.begin(), this->users.end(), &user) != this->users.end());
 }
 
 bool	Channel::isFull()
@@ -105,12 +105,33 @@ void	Channel::setLimit( const unsigned long newLimit )
 
 ClientConnection* Channel::getUserByNick(const std::string &nick)
 {
-	for (std::vector<ClientConnection>::iterator it = users.begin();
+	for (std::vector<ClientConnection *>::iterator it = users.begin();
 		 it != users.end();
 		 ++it)
 	{
-		if (it->username == nick)
-			return &(*it);
+		if ((*it)->username == nick)
+			return *it;
 	}
 	return NULL;
+}
+
+void Channel::inviteUser(ClientConnection &user) {
+    invitedUsers.push_back(&user);
+}
+
+bool Channel::isInvited(ClientConnection &user) {
+    for (size_t i = 0; i < invitedUsers.size(); ++i) {
+        if (invitedUsers[i]->username == user.username)
+            return true;
+    }
+    return false;
+}
+
+void Channel::removeInvitation(ClientConnection &user) {
+    for (std::vector<ClientConnection*>::iterator it = invitedUsers.begin(); it != invitedUsers.end(); ++it) {
+        if ((*it)->username == user.username) {
+            invitedUsers.erase(it);
+            break;
+        }
+    }
 }

@@ -33,6 +33,7 @@ enum actions
 	JOIN,
 	TOPIC,
 	MODE,
+	QUIT,
 	INVITE,
 	PART,
 	KICK,

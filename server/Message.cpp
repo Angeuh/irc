@@ -34,6 +34,7 @@ void	Message::chooseCommand( void )
 	commands["USER"] = USER;
 	commands["PASS"] = PASS;
 	commands["JOIN"] = JOIN;
+	commands["QUIT"] = QUIT;
 	commands["TOPIC"] = TOPIC;
 	commands["MODE"] = MODE;
 	commands["INVITE"] = INVITE;
@@ -66,6 +67,9 @@ void	Message::chooseCommand( void )
 		break;
 	case INVITE:
 		this->command = INVITE;
+		break;
+	case QUIT:
+		this->command = QUIT;
 		break;
 	case PART:
 		this->command = PART;

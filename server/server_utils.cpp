@@ -14,7 +14,6 @@ std::vector<std::string> split( const std::string& str ) {
 	return (res);
 }
 
-
 int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &nick )
 {
 	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)

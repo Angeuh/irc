@@ -26,20 +26,21 @@ class Channel
 		
 		bool	operator==( const Channel ) const;
 
-		std::vector<ClientConnection>	operators;
-		std::vector<ClientConnection>	users;
+		std::vector<ClientConnection *>	operators;
+		std::vector<ClientConnection *>	users;
+		std::vector<ClientConnection *> 	invitedUsers; // stores invited users
 		bool							inviteOnly;
 		bool							hasTopic;
 		bool							hasKey;
 		bool							hasLimit;
 		bool							hasTopicRestriction;
 
-		void				insertUser( const ClientConnection & );
+		void				insertUser(  ClientConnection & );
 		void				removeUser( const ClientConnection & );
-		void				insertOperator( const ClientConnection & );
-		void				removeOperator( const ClientConnection & );
-		bool				isOperator( const ClientConnection & );
-		bool				isOnChannel( const ClientConnection & );
+		void				insertOperator(  ClientConnection & );
+		void				removeOperator(  ClientConnection & );
+		bool				isOperator(  ClientConnection & );
+		bool				isOnChannel(  ClientConnection & );
 		bool				isFull();
 		std::string			getName() const;
 		std::string			getTopic() const;
@@ -49,6 +50,9 @@ class Channel
 		unsigned long		getLimit() const;
 		void				setLimit( const unsigned long );
 		ClientConnection*	getUserByNick( const std::string & );
+		void				inviteUser(ClientConnection &user);
+		bool				isInvited(ClientConnection &user);
+		void				removeInvitation(ClientConnection &user);	
 };
 
 #endif
