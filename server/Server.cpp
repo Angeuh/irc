@@ -615,9 +615,9 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 			std::cout << "[PASS validated] " << std::endl;
 		}
 		break;
-	default:
-		sendMessage(user, RPL::errNotRegistered(msg.params.size() > 0 ? msg.params[0].value : ""));
-		std::cout << "[REGISTRATION] Command rejected pre-registration: " << msg.command << std::endl;
+	// default:
+	// 	sendMessage(user, RPL::errNotRegistered(msg.params.size() > 0 ? msg.params[0].value : ""));
+	// 	std::cout << "[REGISTRATION] Command rejected pre-registration: " << msg.command << std::endl;
 	}
 	if (user.hasNick && user.hasUser && user.hasPass) {
 		std::cout << std::endl << "REGISTRATION OK :" << std::endl;
