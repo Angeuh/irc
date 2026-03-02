@@ -85,7 +85,9 @@ std::string	RPL::rplChannelModeIs( const std::string &username, Channel &channel
 		res += "k";
 	if (channel.hasLimit == true) {
 		res += " ";
-		res += channel.getLimit();
+		std::ostringstream oss;
+		oss << channel.getLimit();
+		res += oss.str();
 	}
 	if (channel.hasKey == true) {
 		res += " ";
