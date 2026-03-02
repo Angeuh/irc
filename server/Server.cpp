@@ -798,7 +798,7 @@ void Server::run()
 					else if (sent == -1)
 					{
 						if (errno == EAGAIN || errno == EWOULDBLOCK)
-							continue;
+							return;
 						else
 						{
 							std::cerr << "Send failed on fd " << fd << " errno: " << errno << std::endl;
