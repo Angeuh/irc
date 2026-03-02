@@ -42,7 +42,8 @@ class Server
 		void	applyMode( char, char, std::string, ClientConnection&, Channel&, std::string &, std::string & );
 		void	quitAllChannels( ClientConnection& );
         void    partCmd(Message &, ClientConnection &);
-        void    quitChannel(ClientConnection &, std::string &, std::string &); 
+        void    quitChannel(ClientConnection &, std::string &, std::string &);
+        void    privmsgCmd(Message &, ClientConnection &);
         bool    checkErrRpl(ClientConnection &, Channel &);
 
 

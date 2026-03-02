@@ -172,3 +172,13 @@ std::string	RPL::errNotRegistered( const std::string &command )
 	return (":" + std::string(SERVERNAME) + " 451 " + command + " :You have not registered\r\n");
 }
 
+std::string	RPL::errCannotSendToChan( const std::string &channel )
+{
+	return (":" + std::string(SERVERNAME) + " 442 " + channel + " :Cannot send to channel\r\n");
+}
+
+std::string	RPL::errNoSuchNick( std::string &nickname )
+{
+	return (":" + std::string(SERVERNAME) + " 401 " + nickname + " :No such nick\r\n");
+}
+

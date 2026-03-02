@@ -596,6 +596,59 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 	}
 }
 
+void Server::privmsgCmd(Message &msg, ClientConnection &user)
+{
+	if (msg.params.size() < 2)
+    {
+        sendMessage(user, RPL::errNeedMoreParams("PRIVMSG"));
+        return;
+    }
+    std::string target = msg.params[0].value;
+    std::string message = msg.params[1].value;
+    std::string formatted = RPL::ircMessageContent(
+        user.username,
+        "PRIVMSG",
+        target,
+        message
+    );
+
+    if (!target.empty() && target[0] == '#')
+    {
+        std::map<std::string, Channel>::iterator it = channels.find(target);
+        if (it == channels.end())
+        {
+            sendMessage(user, RPL::errNoSuchChannel(target));
+            return;
+        }
+        Channel &channel = it->second;
+        if (!channel.isOnChannel(user))
+        {
+            sendMessage(user, RPL::errCannotSendToChan(target));
+            return;
+        }
+        broadcastingMessage(user, "PRIVMSG", formatted, channel);
+    }
+    else
+    {
+        ClientConnection *receiver = NULL;
+        for (std::map<int, ClientConnection>::iterator it = clients.begin();
+             it != clients.end(); ++it)
+        {
+            if (it->second.username == target)
+            {
+                receiver = &it->second;
+                break;
+            }
+        }
+        if (!receiver)
+        {
+            sendMessage(user, RPL::errNoSuchNick(target));
+            return;
+        }
+        sendMessage(*receiver, formatted);
+    }
+}
+
 void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
@@ -623,7 +676,8 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 		kickCmd(msg, user);
 		break;
 	case PRIVMSG:
-		broadcastingMessage(user, "PRIVMSG", RPL::ircMessageContent(user.username, "PRIVMSG", msg.params[0].value, msg.params[1].value), *user.activeChannels[msg.params[0].value]);
+		privmsgCmd(msg, user);
+		break;
 	}
 }
 
