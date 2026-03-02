@@ -37,6 +37,7 @@ enum actions
 	INVITE,
 	PART,
 	KICK,
+	WHO,
 	PRIVMSG,
 	DEFAULT
 };

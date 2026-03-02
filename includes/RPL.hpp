@@ -28,6 +28,9 @@ class RPL
 		static std::string	rplInviting( const std::string &, const std::string &,  const std::string & );
 		static std::string	rplNameReply( const std::string &, Channel & );
 		static std::string	rplEndOfNames( const std::string &, const std::string & );
+		static std::string	rplEndOfBanList( const std::string &, const std::string & );
+		static std::string	rplEndOfWho( const std::string &, const std::string & );
+		static std::string	rplWhoReply( const std::string &, const std::string &, const std::string &, const std::string &, const std::string &, bool );
 
 		static std::string	rplChannelModeIs( const std::string &, Channel & );
 
