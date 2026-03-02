@@ -45,6 +45,7 @@ class Server
         void    quitChannel(ClientConnection &, std::string &, std::string &);
         void    privmsgCmd(Message &, ClientConnection &);
         bool    checkErrRpl(ClientConnection &, Channel &);
+        void    pingClients();
 
 
 
@@ -54,6 +55,9 @@ class Server
 		Server( int, std::string );
 		
 		static bool             Signal;
+        time_t lastPingTime;
+        static const int PING_INTERVAL = 300; //seconds
+        static const int PONG_TIMEOUT = 60;
 		
 		void	run(); // to start the server, somehow ?
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?

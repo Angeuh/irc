@@ -105,6 +105,7 @@ int Server::acceptNewClient()
     addToEpoll(clientSocket, EPOLLIN);
     clients.insert(std::make_pair(clientSocket, ClientConnection()));
     clients[clientSocket].fd = clientSocket;
+	clients[clientSocket].lastActivity = time(NULL);
     std::cout << "New client connected: fd " << clientSocket << std::endl;
     return clientSocket;
 }
@@ -690,6 +691,14 @@ void Server::privmsgCmd(Message &msg, ClientConnection &user)
 void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
+	case PING:
+	{
+		std::string servername = SERVERNAME;
+		std::string response = ":" + servername + " PONG " + msg.params[0].value + "\r\n";
+        sendMessage(user, response);
+        std::cout << "[PING] Responded with PONG to " << msg.params[0].value << std::endl;
+		break;
+	}
 	case JOIN:
 		joinCmd(msg, user);
 		break;
@@ -758,6 +767,43 @@ void Server::callRecv(int fd)
 	}
 }
 
+void Server::pingClients()
+{
+    time_t now = time(NULL);
+    if (now - lastPingTime < PING_INTERVAL)
+        return;
+
+    std::map<int, ClientConnection>::iterator it = clients.begin();
+	while (it != clients.end())
+	{
+		ClientConnection &client = it->second;
+		if (client.isRegistered)
+		{
+			if (now - client.lastActivity >= PING_INTERVAL)
+			{
+				if (client.waitingForPong && now - client.lastPingSent >= PONG_TIMEOUT)
+				{
+					std::cout << "[PING TIMEOUT] Disconnecting " << client.username << std::endl;
+					removeFromEpoll(client.fd);
+					close(client.fd);
+					std::map<int, ClientConnection>::iterator toErase = it;
+					++it;
+					clients.erase(toErase);
+					continue;
+				}
+				std::string servername = SERVERNAME;
+				std::string pingMsg = ":" + servername + " PING :" + servername + "\r\n";
+				sendMessage(client, pingMsg);
+				client.lastPingSent = now;
+				client.waitingForPong = true;
+				std::cout << "[PING] Sent to " << client.username << std::endl;
+			}
+		}
+		++it;
+	}
+	lastPingTime = now;
+}
+
 void Server::run()
 {
     const int MAX_EVENTS = 64;
@@ -785,6 +831,9 @@ void Server::run()
             {
                 int fd_epoll = events[i].data.fd;
                 callRecv(fd_epoll);
+				std::map<int, ClientConnection>::iterator it = clients.find(fd_epoll);
+				if (it != clients.end())
+					it->second.lastActivity = time(NULL); 
             }
             if (events[i].events & EPOLLOUT)
             {
@@ -817,6 +866,7 @@ void Server::run()
                 }
             }
         }
+		pingClients();
     }
 }
 

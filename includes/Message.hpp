@@ -35,6 +35,7 @@ enum actions
 	MODE,
 	QUIT,
 	INVITE,
+	PING,
 	PART,
 	KICK,
 	PRIVMSG,

@@ -2,10 +2,12 @@
 
 ClientConnection::ClientConnection() : 
 	    fd(0),
+		lastActivity(0),
 		hasNick(false),
 		hasUser(false),
 		hasPass(false),
-		isRegistered(false)
+		isRegistered(false),
+		waitingForPong(false)
 {}
 
 ClientConnection::~ClientConnection() {}

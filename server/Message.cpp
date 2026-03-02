@@ -34,6 +34,7 @@ void	Message::chooseCommand( void )
 	commands["USER"] = USER;
 	commands["PASS"] = PASS;
 	commands["JOIN"] = JOIN;
+	commands["PING"] = PING;
 	commands["QUIT"] = QUIT;
 	commands["TOPIC"] = TOPIC;
 	commands["MODE"] = MODE;
@@ -52,6 +53,9 @@ void	Message::chooseCommand( void )
 		break;
 	case USER:
 		this->command = USER;
+		break;
+	case PING:
+		this->command = PING;
 		break;
 	case PASS:
 		this->command = PASS;
