@@ -26,7 +26,7 @@ std::string	RPL::rplWelcome(const std::string &username)
 //username, channel
 std::string	RPL::rplNoTopic(const std::string &username, const std::string &channel)
 {
-    return (":" + std::string(SERVERNAME) + " 331 " + username + " " + channel + " :\r\n");
+    return (":" + std::string(SERVERNAME) + " 331 " + username + " " + channel + " :No topic is set\r\n");
 }
 
 //username, channel, topic

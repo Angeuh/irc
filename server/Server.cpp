@@ -231,7 +231,6 @@ void Server::quitChannel(ClientConnection &user, std::string &channelName, std::
 		channels.erase(it);
 }
 
-
 void Server::partCmd(Message &msg, ClientConnection &user)
 {
 	//need to make a list of channels
@@ -333,30 +332,35 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 		return ;
 	}
 	
-	Channel	&channel = *user.activeChannels[msg.params[0].value];
-	if (msg.params.size() == 1) {
-		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+	std::map<std::string, Channel>::iterator	it = this->channels.find(msg.params[0].value);
+	if (it == this->channels.end()) {
+		std::cout << "[TOPIC] Channel not registered" << std::endl;
+		return ;
+	}
+	Channel	*channel = &it->second;
+	if (channel->isOnChannel(user) == false) {
+		sendMessage(user, RPL::errNotOnChannel(user.username, channel->getName()));
+		std::cout << "[TOPIC] User not on channel" << std::endl;
+	} else if (msg.params.size() == 1 ) {
+		if (channel->hasTopic == true)
+			sendMessage(user, RPL::rplTopic(user.username, channel->getName(), msg.params[1].value));
+		else
+			sendMessage(user, RPL::rplNoTopic(user.username, channel->getName()));
 		std::cout << "[TOPIC] Topic send" << std::endl;
-	} else if (channel.hasTopicRestriction && channel.isOperator(user) == false) {
-		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel.getName()));
+	} else if (channel->hasTopicRestriction && channel->isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channel->getName()));
 		std::cout << "[TOPIC] Chanop privilege is needed" << std::endl;
 	} else if (msg.params[1].value.empty()) {
-		channel.getTopic() = "";
-		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), msg.params[1].value));
+		channel->getTopic() = "";
+		sendMessage(user, RPL::rplTopic(user.username, channel->getName(), msg.params[1].value));
+		channel->hasTopic = false;
 		std::cout << "[TOPIC] Topic removed" << std::endl;
 	} else {
-		channel.setTopic(msg.params[1].value);
-		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel.getName(), msg.params[1].value), channel);
+		channel->setTopic(msg.params[1].value);
+		broadcastingMessage(user, "TOPIC", RPL::ircMessageContent(user.username, "TOPIC", channel->getName(), msg.params[1].value), *channel);
+		channel->hasTopic = true;
 		std::cout << "[TOPIC] Topic changed to" << msg.params[1].value << std::endl;
 	}
-}
-
-static bool	isNumber( std::string str )
-{
-	for (size_t i = 0; i < str.length(); i++)
-		if (str[i] < '0' || str[i] > '9')
-			return (false);
-	return (true);
 }
 
 void	Server::applyMode( char mode, char sign, std::string param, ClientConnection &user, Channel &channel, std::string &validModes, std::string &validParams )
@@ -557,7 +561,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 	case USER:
 		if (msg.params.size() != 4) {
 			sendMessage(user, RPL::errNeedMoreParams("USER"));
-			std::cout << "[USER] Need more params" << std::endl;
+			std::cout << "[USER] Need more paraEms" << std::endl;
 		} else if (user.isRegistered) {
 			sendMessage(user, RPL::errAlreadyRegistred());
 			std::cout << "[USER] Already registred" << std::endl;
