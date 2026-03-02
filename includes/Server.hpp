@@ -46,7 +46,7 @@ class Server
 		void	whoCmd( Message &, ClientConnection & );
         void    privmsgCmd(Message &, ClientConnection &);
         void    pingClients();
-		
+
     public:
 		Server();
 		~Server();
