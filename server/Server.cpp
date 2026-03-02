@@ -2,10 +2,7 @@
 
 bool Server::Signal = false; 
 
-Server::Server()
-{
-    Signal = false;
-}
+Server::Server() {}
 
 Server::~Server()
 {
@@ -24,7 +21,8 @@ Server::~Server()
 Server::Server(int port, std::string pass) :
 	password(pass)
 {
-    Signal = false;
+	Signal = false;
+	lastPingTime = time(NULL);
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0)
     {
@@ -508,14 +506,14 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 		std::cout << "[MODE] Mode query send" << std::endl;
 		return ;
 	}
-	if (this->channels[channelName].isOperator(user) == false) {
-		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
-		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
-		return ;
-	}
 	if (msg.params[1].value == "b") {
 		sendMessage(user, RPL::rplEndOfBanList(user.username, channelName));
 		std::cout << "[MODE] Ban list query" << std::endl;
+		return ;
+	}
+	if (this->channels[channelName].isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
+		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
 		return ;
 	}
 	char			sign = '+';
