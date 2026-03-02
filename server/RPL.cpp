@@ -79,10 +79,10 @@ std::string	RPL::rplWhoReply( const std::string &username, const std::string &ch
 {
 	std::string	res;
 
-	res = ":" + std::string(SERVERNAME) + " 352 " + " " + username + " " + channel + user + " localhost localhost " + nick + " H";
+	res = ":" + std::string(SERVERNAME) + " 352 " + username + " " + channel + " " + user + " localhost localhost " + nick + " H";
 	if (isOp)
 		res += "@";
-	res += ":0 " + realname + "\r\n";
+	res += " :0 " + realname + "\r\n";
 	return (res);
 }
 

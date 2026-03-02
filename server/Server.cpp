@@ -711,8 +711,9 @@ void	Server::whoCmd( Message &msg, ClientConnection &user )
 	for (std::vector<ClientConnection *>::iterator it = channel.users.begin(); it != channel.users.end(); ++it)
 	{
 		ClientConnection *client = *it;
-		sendMessage(user, RPL::rplWhoReply(user.username, channel.getName(), client->name, client->username, client->realname, channel.isOperator(client)));
+		sendMessage(user, RPL::rplWhoReply(user.username, channel.getName(), client->name, client->username, client->realname, channel.isOperator(*client)));
 	}
+	sendMessage(user, RPL::rplEndOfWho(user.username, channel.getName()));
 }
 
 void	Server::handleClientMessage( Message &msg, ClientConnection &user )
