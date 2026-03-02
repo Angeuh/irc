@@ -9,6 +9,12 @@ Server::Server()
 
 Server::~Server()
 {
+	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        close(it->second.fd);
+        removeFromEpoll(it->second.fd);
+    }
+    clients.clear();
     close(serverSocket);
     close(epfd);
     
@@ -725,7 +731,7 @@ void Server::run()
     const int MAX_EVENTS = 64;
     struct epoll_event events[MAX_EVENTS];
 
-    while (true)
+    while (!Signal)
     {
         int n = epoll_wait(epfd, events, MAX_EVENTS, -1);
 
@@ -735,7 +741,6 @@ void Server::run()
                 return;
             throw PollError();
         }
-
         for (int i = 0; i < n; i++)
         {
             int fd = events[i].data.fd;
@@ -753,6 +758,7 @@ void Server::run()
             {
                 ClientConnection &client = clients[fd];
 
+				std::string hugeData(1024*1024*10, 'A');
                 if (!client.writeBuffer.empty())
                 {
                     int sent = send(
@@ -762,7 +768,19 @@ void Server::run()
                         0);
                     if (sent > 0)
                         client.writeBuffer.erase(0, sent);
-
+					else if (sent == -1)
+					{
+						if (errno == EAGAIN || errno == EWOULDBLOCK)
+							continue;
+						else
+						{
+							std::cerr << "Send failed on fd " << fd << " errno: " << errno << std::endl;
+							removeFromEpoll(fd);
+							close(fd);
+							clients.erase(fd);
+							return;
+						}
+					}
                     if (client.writeBuffer.empty())
                         this->modifyEpoll(fd, EPOLLIN);
                 }
