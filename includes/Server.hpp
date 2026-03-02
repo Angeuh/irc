@@ -43,12 +43,10 @@ class Server
 		void	quitAllChannels( ClientConnection& );
         void    partCmd(Message &, ClientConnection &);
         void    quitChannel(ClientConnection &, std::string &, std::string &);
+		void	whoCmd( Message &, ClientConnection & );
         void    privmsgCmd(Message &, ClientConnection &);
-        bool    checkErrRpl(ClientConnection &, Channel &);
         void    pingClients();
-
-
-
+		
     public:
 		Server();
 		~Server();

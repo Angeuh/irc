@@ -62,18 +62,35 @@ std::string	RPL::rplEndOfNames( const std::string &username, const std::string &
 	return (":" + std::string(SERVERNAME) + " 366 " + username + " " + channel + " :End of /NAMES list\r\n");
 }
 
-bool	hasMode( const Channel &channel )
+//username, channel
+std::string	RPL::rplEndOfBanList( const std::string &username, const std::string &channel )
 {
-	return (channel.hasTopicRestriction || channel.inviteOnly || channel.hasLimit || channel.hasKey);
+	return (":" + std::string(SERVERNAME) + " 368 " + " " + username + " " + channel + " :End of channel ban list\r\n");
 }
+
+//username, channel
+std::string	RPL::rplEndOfWho( const std::string &username, const std::string &channel )
+{
+	return (":" + std::string(SERVERNAME) + " 315 " + " " + username + " " + channel + " :End of /WHO list\r\n");
+}
+
+//username, channel, user, nick, isOp, realname
+std::string	RPL::rplWhoReply( const std::string &username, const std::string &channel, const std::string &user, const std::string &nick, const std::string &realname, bool isOp )
+{
+	std::string	res;
+
+	res = ":" + std::string(SERVERNAME) + " 352 " + username + " " + channel + " " + user + " localhost localhost " + nick + " H";
+	if (isOp)
+		res += "@";
+	res += " :0 " + realname + "\r\n";
+	return (res);
+}
+
 //username, channel object
 // display : +tilk limit key
 std::string	RPL::rplChannelModeIs( const std::string &username, Channel &channel )
 {
-	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName();
-
-	if (hasMode(channel))
-		res += " +";
+	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName() + " +";
 
 	if (channel.hasTopicRestriction == true)
 		res += "t";

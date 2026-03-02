@@ -41,6 +41,7 @@ void	Message::chooseCommand( void )
 	commands["INVITE"] = INVITE;
 	commands["KICK"] = KICK;
 	commands["PART"] = PART;
+	commands["WHO"] = WHO;
 	commands["PRIVMSG"] = PRIVMSG;
 	commands["DEFAULT"] = DEFAULT;
 
@@ -80,6 +81,9 @@ void	Message::chooseCommand( void )
 		break;
 	case KICK:
 		this->command = KICK;
+		break;
+	case WHO:
+		this->command = WHO;
 		break;
 	case PRIVMSG:
 		this->command = PRIVMSG;

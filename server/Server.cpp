@@ -513,6 +513,11 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
 		return ;
 	}
+	if (msg.params[1].value == "b") {
+		sendMessage(user, RPL::rplEndOfBanList(user.username, channelName));
+		std::cout << "[MODE] Ban list query" << std::endl;
+		return ;
+	}
 	char			sign = '+';
 	bool			hasSignChanged = true;
 	unsigned long	paramIndex = 2;
@@ -603,6 +608,7 @@ void	Server::handleRegistration( Message &msg, ClientConnection &user )
 		} else {
 			user.name = msg.params.back().value;
 			user.hasUser = true;
+			user.realname = msg.params[2].value;
 			std::cout << "[USER validated] " << user.name << std::endl;
 		}
 		break;
@@ -688,6 +694,29 @@ void Server::privmsgCmd(Message &msg, ClientConnection &user)
     }
 }
 
+void	Server::whoCmd( Message &msg, ClientConnection &user )
+{
+	if (msg.params.size() < 1) {
+		sendMessage(user, RPL::errNeedMoreParams("WHO"));
+		std::cout << "[WHO] Need more params" << std::endl;
+		return ;
+	}
+	std::map<std::string, Channel>::iterator it = this->channels.find(msg.params[0].value);
+	if (it == this->channels.end()) {
+		sendMessage(user, RPL::errNoSuchChannel(msg.params[0].value));
+		std::cout << "[WHO] No such channel" << std::endl;
+		return ;
+	}
+	Channel &channel = it->second;
+
+	for (std::vector<ClientConnection *>::iterator it = channel.users.begin(); it != channel.users.end(); ++it)
+	{
+		ClientConnection *client = *it;
+		sendMessage(user, RPL::rplWhoReply(user.username, channel.getName(), client->name, client->username, client->realname, channel.isOperator(*client)));
+	}
+	sendMessage(user, RPL::rplEndOfWho(user.username, channel.getName()));
+}
+
 void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 {
 	switch (msg.command) {
@@ -713,7 +742,6 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 		break;
 	case QUIT:
 		quitAllChannels(user);
-		//sendMessage(user, RPL::rplQuit(user.username));
 		std::cout << "[QUIT] User " << user.username << " quit" << std::endl;
 		break;
 	case PART:
@@ -721,6 +749,9 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 		break;
 	case KICK:
 		kickCmd(msg, user);
+		break;
+	case WHO:
+		whoCmd(msg, user);
 		break;
 	case PRIVMSG:
 		privmsgCmd(msg, user);

@@ -38,6 +38,7 @@ enum actions
 	PING,
 	PART,
 	KICK,
+	WHO,
 	PRIVMSG,
 	DEFAULT
 };
