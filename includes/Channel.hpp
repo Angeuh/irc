@@ -28,7 +28,7 @@ class Channel
 
 		std::vector<ClientConnection *>	operators;
 		std::vector<ClientConnection *>	users;
-		std::vector<ClientConnection *> 	invitedUsers; // stores invited users
+		std::vector<ClientConnection *> invitedUsers; // stores invited users
 		bool							inviteOnly;
 		bool							hasTopic;
 		bool							hasKey;
