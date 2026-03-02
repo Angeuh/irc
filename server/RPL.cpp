@@ -26,7 +26,7 @@ std::string	RPL::rplWelcome(const std::string &username)
 //username, channel
 std::string	RPL::rplNoTopic(const std::string &username, const std::string &channel)
 {
-    return (":" + std::string(SERVERNAME) + " 331 " + username + " " + channel + " :\r\n");
+    return (":" + std::string(SERVERNAME) + " 331 " + username + " " + channel + " :No topic is set\r\n");
 }
 
 //username, channel, topic
@@ -62,11 +62,18 @@ std::string	RPL::rplEndOfNames( const std::string &username, const std::string &
 	return (":" + std::string(SERVERNAME) + " 366 " + username + " " + channel + " :End of /NAMES list\r\n");
 }
 
+bool	hasMode( const Channel &channel )
+{
+	return (channel.hasTopicRestriction || channel.inviteOnly || channel.hasLimit || channel.hasKey);
+}
 //username, channel object
 // display : +tilk limit key
 std::string	RPL::rplChannelModeIs( const std::string &username, Channel &channel )
 {
-	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName() + "+";
+	std::string	res = ":" + std::string(SERVERNAME) + " 324 " + username + " " + channel.getName();
+
+	if (hasMode(channel))
+		res += " +";
 
 	if (channel.hasTopicRestriction == true)
 		res += "t";

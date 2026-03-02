@@ -9,7 +9,7 @@ Channel::Channel( const std::string & n, ClientConnection &user ) :
 	hasTopic(false),
 	hasKey(false),
 	hasLimit(false),
-	hasTopicRestriction(false)
+	hasTopicRestriction(true)
 {
 	this->users.push_back(&user);
 	this->operators.push_back(&user);

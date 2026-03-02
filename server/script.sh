@@ -1,7 +1,7 @@
 #!/bin/bash
 #-noautosendcmd pour mettre le USER à la main
 
-gnome-terminal --title="IRC SERVER" -- bash -c "./SERVER 8080 123; bash"
+gnome-terminal --title="IRC SERVER" -- bash -c "./ircserv 8080 123; bash"
 sleep 2
 
 xterm -e "irssi -n opUser -c localhost -p 8080 -w 123" &
