@@ -108,8 +108,6 @@ void	Server::welcomeToChannel( Channel &channel, ClientConnection &user )
 	broadcastingMessage(user, "JOIN", RPL::ircMessageNoContent(user.username, "JOIN", channel.getName()), channel);
 	if (channel.hasTopic)
 		sendMessage(user, RPL::rplTopic(user.username, channel.getName(), channel.getTopic()));
-	else
-		sendMessage(user, RPL::rplNoTopic(user.username, channel.getName()));
 	sendMessage(user, RPL::rplNameReply(user.username, channel));
 	sendMessage(user, RPL::rplEndOfNames(user.username, channel.getName()));
 }
@@ -374,13 +372,13 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 			channel.hasKey = true;
 			channel.setKey(param);
 			std::cout << "KEY SET TO : " << param << std::endl;
-			validModes += "k";
+			validModes += "+k";
 			validParams += " ";
 			validParams += param;
 		} else {
 			channel.hasKey = false;
 			std::cout << "KEY REMOVED" << std::endl;
-			validModes += "k";
+			validModes += "-k";
 		}
 		break;
 	case 'o':
@@ -393,13 +391,13 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 		if (sign == '+') {
 			channel.insertOperator(*newOp);
 			std::cout << "OPERATOR SET FOR : " << param << std::endl;
-			validModes += "o";
+			validModes += "+o";
 			validParams += " ";
 			validParams += param;
 		} else {
 			channel.removeOperator(*newOp);
 			std::cout << "OPERATOR REMOVED FOR : " << param << std::endl;
-			validModes += "o";
+			validModes += "-o";
 			validParams += " ";
 			validParams += param;
 		}
@@ -414,35 +412,35 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 			channel.setLimit(limit);
 			channel.hasLimit = true;
 			std::cout << "LIMIT SET TO : " << limit << std::endl;
-			validModes += "l";
+			validModes += "+l";
 			validParams += " ";
 			validParams += param;
 		} else {
 			channel.hasLimit = false;
 			std::cout << "LIMIT REMOVED" << std::endl;
-			validModes += "l";
+			validModes += "-l";
 		}
 		break;
 	case 't':
 		if (sign == '+') {
 			channel.hasTopicRestriction = true;
 			std::cout << "TOPIC RESTRICTION SET" << std::endl;
-			validModes += "t";
+			validModes += "+t";
 		} else {
 			channel.hasTopicRestriction = false;
 			std::cout << "TOPIC RESTRICTION REMOVED" << std::endl;
-			validModes += "t";
+			validModes += "-t";
 		}
 		break;
 	case 'i':
 		if (sign == '+') {
 			channel.inviteOnly = true;
 			std::cout << "INVITE ONLY SET" << std::endl;
-			validModes += "i";
+			validModes += "+i";
 		} else {
 			channel.inviteOnly = false;
 			std::cout << "INVITE ONLY REMOVED" << std::endl;
-			validModes += "i";
+			validModes += "-i";
 		}
 		break;
 	default:
@@ -474,14 +472,14 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 		}
 		return ;
 	}
-	if (this->channels[channelName].isOperator(user) == false) {
-		sendMessage(user, RPL::errChanOpPrivsNeeded(channelName, user.username));
-		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
-		return ;
-	}
 	if (msg.params.size() == 1) {
 		sendMessage(user, RPL::rplChannelModeIs(user.username, this->channels[channelName]));
 		std::cout << "[MODE] Mode query send" << std::endl;
+		return ;
+	}
+	if (this->channels[channelName].isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
+		std::cout << "[MODE] Chanop privilege is needed" << std::endl;
 		return ;
 	}
 	char			sign = '+';
