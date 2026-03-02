@@ -162,12 +162,17 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 
 void	Server::quitAllChannels( ClientConnection &user )
 {
-	for (std::map<std::string, Channel *>::iterator it = user.activeChannels.begin(); it != user.activeChannels.end(); it++)
-	{
-		std::string channelName = it->second->getName();
-		std::string reason = ":QUITING";
-		quitChannel(user, channelName, reason);
-	}
+	std::vector<std::string> channels;
+    for (std::map<std::string, Channel *>::iterator it = user.activeChannels.begin();
+         it != user.activeChannels.end(); ++it)
+    {
+        channels.push_back(it->first);
+    }
+    for (std::vector<std::string>::iterator it = channels.begin(); it != channels.end(); ++it)
+    {
+        std::string reason = ":QUITING";
+        quitChannel(user, *it, reason);
+    }
 }
 
 // join <channel,channel,channel...> <key,key,key...>
@@ -760,7 +765,6 @@ void Server::run()
             {
                 ClientConnection &client = clients[fd];
 
-				std::string hugeData(1024*1024*10, 'A');
                 if (!client.writeBuffer.empty())
                 {
                     int sent = send(
