@@ -163,15 +163,11 @@ void	Server::quitAllChannels( ClientConnection &user )
 {
 	std::vector<std::string> channels;
     for (std::map<std::string, Channel *>::iterator it = user.activeChannels.begin();
-         it != user.activeChannels.end(); ++it)
-    {
+        it != user.activeChannels.end(); ++it) {
         channels.push_back(it->first);
-    }
+	}
     for (std::vector<std::string>::iterator it = channels.begin(); it != channels.end(); ++it)
-    {
-        std::string reason = ":QUITING";
-        quitChannel(user, *it, reason);
-    }
+        quitChannel(user, *it, "QUIT", ":Quit : Leaving");
 }
 
 // join <channel,channel,channel...> <key,key,key...>
@@ -202,34 +198,24 @@ void	Server::joinCmd( Message &msg, ClientConnection &user )
 	}
 }
 
-void Server::quitChannel(ClientConnection &user, std::string &channelName, std::string &reason) 
+//QUIT :reason
+//PART #test
+//PART #test :reason
+//KICK #test kickeur :kicked
+void Server::quitChannel(ClientConnection &user, const std::string &channelName, const std::string &command, const std::string &reason)
 {
 	std::map<std::string, Channel>::iterator it = channels.find(channelName);
-	if (it == channels.end())
-	{
+	if (it == channels.end()) {
 		sendMessage(user, RPL::errNoSuchChannel(channelName));
 		return;
 	}
 	Channel *channel = &it->second;
-	if (!channel->isOnChannel(user))
-	{
+	if (!channel->isOnChannel(user)) {
 		sendMessage(user, RPL::errNotOnChannel(user.username, channelName));
 		return;
 	}
-	std::string content = channelName;
-	if (!reason.empty())
-		content += reason;
-	else
-	{
-		content += ":LEAVING";
-	}
-	std::string partMsg = RPL::ircMessageContent(
-		user.username,
-		"PART",
-		channelName,
-		content
-	);
-	broadcastingMessage(user, "PART", partMsg, *channel);
+	std::string partMsg = RPL::ircMessageNoContent(user.username, command, reason);
+	broadcastingMessage(user, command, partMsg, *channel);
 
 	channel->removeUser(user);
 	if (channel->isInvited(user))
@@ -243,26 +229,30 @@ void Server::partCmd(Message &msg, ClientConnection &user)
 {
 	//need to make a list of channels
 	std::vector<std::string> listChannels;
-	if (msg.params.size() < 1)
-	{
+	if (msg.params.size() < 1) {
 		sendMessage(user, RPL::errNeedMoreParams("PART"));
 		return;
 	}
 	listChannels = split(msg.params[0].value);
-	for(size_t j = 0; j < listChannels.size(); j++)
-	{
-		std::string reason = msg.params.size() > 1 ? msg.params[1].value : "";
-		quitChannel(user, listChannels[j], reason);
+	for(size_t j = 0; j < listChannels.size(); j++) {
+		std::string	reason;
+
+		if (msg.params.size() > 1) {
+			reason += listChannels[j];
+			reason += " :";
+			reason += msg.params[1].value;
+		} else
+			reason += listChannels[j];
+		quitChannel(user, listChannels[j], "PART", reason);
 	}
 }
 
-// format : KICK <channel, ...> <nick, ...> [<reason>]
+// format : KICK <channel> <nick> [<reason>]
 // either multiple channels or multiple users
 // reason broadcasted to all users
 void Server::kickCmd(Message &msg, ClientConnection &user)
 {
-	if (msg.params.size() < 2)
-	{
+	if (msg.params.size() < 2) {
 		sendMessage(user, RPL::errNeedMoreParams("KICK"));
 		return;
 	}
@@ -270,30 +260,31 @@ void Server::kickCmd(Message &msg, ClientConnection &user)
 	std::string &nick = msg.params[1].value;
 
 	std::map<std::string, Channel>::iterator it = channels.find(channelName);
-	if (it == channels.end())
-	{
+	if (it == channels.end()) {
 		sendMessage(user, RPL::errNoSuchChannel(channelName));
 		return;
 	}
 	Channel &channel = it->second;
-	if (!channel.isOnChannel(user))
-	{
+	if (!channel.isOnChannel(user)) {
 		sendMessage(user, RPL::errNotOnChannel(user.username, channelName));
 		return;
 	}
-	if (!channel.isOperator(user))
-	{
+	if (!channel.isOperator(user)) {
 		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
 		return;
 	}
 	ClientConnection *target = channel.getUserByNick(nick);
-	if (!target)
-	{
+	if (!target) {
 		sendMessage(user, RPL::errNotOnChannel(nick, channelName));
 		return;
 	}
-	std::string reason = msg.params.size() > 1 ? msg.params[1].value : "";
-		quitChannel(*target, channelName, reason);
+	std::string reason = channelName + " " + nick + " ";
+	if (msg.params.size() >= 3)
+		reason += msg.params[2].value;
+	else
+		reason += user.username;	
+	quitChannel(*target, channelName, "KICK", reason);
+	std::cout << "[KICK] Removed " << target->username << " from channel " << channelName << std::endl;
 }
 
 // format : INVITE <nickname> <channel>
@@ -328,6 +319,7 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 	}
 	channel.inviteUser(*target);
 	sendMessage(user, RPL::rplInviting(user.username, channelName, nick));
+	sendMessage(*target, RPL::ircMessageContent(target->username, "INVITE", target->username, channel.getName()));
 }
 
 // format : TOPIC [param]
@@ -351,7 +343,7 @@ void	Server::topicCmd( Message &msg, ClientConnection &user )
 		std::cout << "[TOPIC] User not on channel" << std::endl;
 	} else if (msg.params.size() == 1 ) {
 		if (channel->hasTopic == true)
-			sendMessage(user, RPL::rplTopic(user.username, channel->getName(), msg.params[1].value));
+			sendMessage(user, RPL::rplTopic(user.username, channel->getName(), channel->getTopic()));
 		else
 			sendMessage(user, RPL::rplNoTopic(user.username, channel->getName()));
 		std::cout << "[TOPIC] Topic send" << std::endl;

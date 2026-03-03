@@ -42,7 +42,7 @@ class Server
 		void	applyMode( char, char, std::string, ClientConnection&, Channel&, std::string &, std::string &, bool );
 		void	quitAllChannels( ClientConnection& );
         void    partCmd(Message &, ClientConnection &);
-        void    quitChannel(ClientConnection &, std::string &, std::string &);
+        void    quitChannel(ClientConnection &, const std::string &, const std::string &, const std::string &);
 		void	whoCmd( Message &, ClientConnection & );
         void    privmsgCmd(Message &, ClientConnection &);
         void    pingClients();
