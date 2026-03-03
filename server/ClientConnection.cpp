@@ -16,3 +16,7 @@ bool	ClientConnection::operator==( const ClientConnection& other ) const
 {
 	return (this->fd == other.fd);
 }
+
+void	ClientConnection::inviteUser(Channel &channel){
+	invitedChannels[channel.getName()] = &channel;
+}

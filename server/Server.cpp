@@ -161,6 +161,12 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 
 void	Server::quitAllChannels( ClientConnection &user )
 {
+	std::vector<std::string> channelsInvited;
+    for (std::map<std::string, Channel *>::iterator it = user.invitedChannels.begin();
+         it != user.invitedChannels.end(); ++it)
+    {
+        it->second->removeInvitation(user);
+    }
 	std::vector<std::string> channels;
     for (std::map<std::string, Channel *>::iterator it = user.activeChannels.begin();
         it != user.activeChannels.end(); ++it) {
@@ -318,6 +324,7 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 		return ;
 	}
 	channel.inviteUser(*target);
+	target->inviteUser(channel);
 	sendMessage(user, RPL::rplInviting(user.username, channelName, nick));
 	sendMessage(*target, RPL::ircMessageContent(target->username, "INVITE", target->username, channel.getName()));
 }
@@ -419,8 +426,8 @@ void	Server::applyMode( char mode, char sign, std::string param, ClientConnectio
 			limit = atoi(param.c_str());
 			if (limit <= 0)
 				return ;
-			channel.setLimit(limit);
 			channel.hasLimit = true;
+			channel.setLimit(limit);
 			std::cout << "LIMIT SET TO : " << limit << std::endl;
 			if (hasSignChanged == true)
 				validModes += "+";

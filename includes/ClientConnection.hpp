@@ -12,8 +12,9 @@ class ClientConnection
     public:
 
 		ClientConnection();
-        ~ClientConnection();	
-		
+        ~ClientConnection();
+
+		void	inviteUser(Channel &channel);
 		bool	operator==( const ClientConnection& ) const;
 
         int 							fd;					// socket
@@ -32,6 +33,7 @@ class ClientConnection
 		bool							isRegistered;
         bool							waitingForPong;  
 		std::map<std::string, Channel *>	activeChannels;
+		std::map<std::string, Channel *>	invitedChannels;
 		
 };
 

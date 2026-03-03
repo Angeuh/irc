@@ -18,6 +18,9 @@ Channel::Channel( const std::string & n, ClientConnection &user ) :
 Channel::~Channel() {
 	this->users.clear();
 	this->operators.clear();
+	for (std::vector<ClientConnection *>::iterator it = invitedUsers.begin(); it != invitedUsers.end(); ++it) {
+		(*it)->invitedChannels.erase(this->name);
+	}
 }
 
 bool	Channel::operator==(  Channel other ) const
