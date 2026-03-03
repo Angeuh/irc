@@ -840,7 +840,7 @@ void Server::run()
 
     while (!Signal)
     {
-        int n = epoll_wait(epfd, events, MAX_EVENTS, 300000);
+        int n = epoll_wait(epfd, events, MAX_EVENTS, 1000);
 
         if (n < 0)
         {
