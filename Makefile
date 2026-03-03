@@ -4,9 +4,9 @@ CXXFLAGS	= -Wall -Werror -Wextra -g3 -std=c++98 -MMD
 
 NAME		= ircserv
 
-SRC_DIR		= .
+SRC_DIR		= ./server
 OBJ_DIR 	= obj
-INC_DIR 	= ../includes/
+INC_DIR 	= ./includes
 
 SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp Message.cpp epoll_helper.cpp server_utils.cpp
 SRC			:= $(addprefix $(SRC_DIR)/, $(SRC))
