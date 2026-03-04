@@ -719,6 +719,11 @@ void	Server::handleClientMessage( Message &msg, ClientConnection &user )
 	switch (msg.command) {
 	case PING:
 	{
+		if (msg.params.size() == 0) {
+			sendMessage(user, RPL::errNeedMoreParams("PING"));
+			std::cout << "[PING] No origin" << std::endl;
+			return ;
+		}
 		std::string servername = SERVERNAME;
 		std::string response = ":" + servername + " PONG " + msg.params[0].value + "\r\n";
         sendMessage(user, response);
