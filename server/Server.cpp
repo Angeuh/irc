@@ -562,7 +562,7 @@ std::string Server::generateFreeNick(const std::string &base)
     for (int i = 1; i < 1000; i++)
     {
         nick = base + itoa(i);
-        if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+        if (isNicknameAvailable(this->clients, nick) == SUCCESS && nick.length() <= 9)
             return nick;
     }
 
@@ -840,11 +840,11 @@ void Server::pingClients()
 void Server::run()
 {
     const int MAX_EVENTS = 64;
-    struct epoll_event events[MAX_EVENTS];
+    struct std::vector<epoll_event> events(MAX_EVENTS);
 
     while (!Signal)
     {
-        int n = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+        int n = epoll_wait(epfd, events.data(), events.size(), 1000);
 
         if (n < 0)
         {
