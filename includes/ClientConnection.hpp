@@ -24,7 +24,6 @@ class ClientConnection
         std::string						writeBuffer;		// queued outgoing data
         std::string 					name;				// real name used in irssi
         std::string 					host;				// hostname or IP address
-        std::string 					currentChannel;		// /join x (channel name)
         time_t							lastActivity;		// for timeout handling
         time_t						    lastPingSent;		    // time of last PING sent, for timeout handling
 		bool							hasNick;

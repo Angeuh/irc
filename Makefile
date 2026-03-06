@@ -8,7 +8,7 @@ SRC_DIR		= ./server
 OBJ_DIR 	= obj
 INC_DIR 	= ./includes
 
-SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp Message.cpp epoll_helper.cpp server_utils.cpp
+SRC			= Server.cpp main.cpp ClientConnection.cpp Channel.cpp RPL.cpp Message.cpp epoll_helper.cpp server_utils.cpp Commands.cpp
 SRC			:= $(addprefix $(SRC_DIR)/, $(SRC))
 
 OBJ			= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC))
