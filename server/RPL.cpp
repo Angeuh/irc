@@ -167,7 +167,7 @@ std::string	RPL::errErroneusNickname( std::string const &nick )
 //username
 std::string	RPL::errNickNameInUse( const std::string &username )
 {
-	return (":" + std::string(SERVERNAME) + " 433 * " + username + " :Nickname is already in use\r\n");
+	return (":" + std::string(SERVERNAME) + " 433 " + username + " :Nickname is already in use\r\n");
 }
 
 std::string	RPL::errAlreadyRegistred( void )
@@ -203,8 +203,14 @@ std::string	RPL::errCannotSendToChan( const std::string &channel )
 	return (":" + std::string(SERVERNAME) + " 442 " + channel + " :Cannot send to channel\r\n");
 }
 
+//username
 std::string	RPL::errNoSuchNick( std::string &nickname )
 {
 	return (":" + std::string(SERVERNAME) + " 401 " + nickname + " :No such nick\r\n");
 }
 
+//username, channel
+std::string	RPL::errUserOnChannel( std::string &nickname, std::string &channel )
+{
+	return (":" + std::string(SERVERNAME) + " 443 " + nickname + " " + channel + " :is already on channel\r\n");
+}

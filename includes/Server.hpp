@@ -28,8 +28,6 @@ class Server
 	
         int     acceptNewClient();
         void	callRecv( int );
-		void	handleClientMessage( Message&, ClientConnection& );
-		void	handleRegistration( Message&, ClientConnection& );
         std::string generateFreeNick(const std::string &base);
 
         void	joinCmd( Message&, ClientConnection& );
@@ -46,6 +44,11 @@ class Server
 		void	whoCmd( Message &, ClientConnection & );
         void    privmsgCmd(Message &, ClientConnection &);
         void    pingClients();
+		void	handleRegistration( Message &, ClientConnection & );
+		void	handleClientMessage( Message &, ClientConnection & );
+		void 	broadcastingMessage( ClientConnection&, const std::string&, const std::string&, Channel &);
+		void	sendMessage( ClientConnection&, const std::string& );
+
 
     public:
 		Server();
@@ -61,8 +64,6 @@ class Server
         void	addToEpoll(int fd, uint32_t events);	// pass to private ?
         void	modifyEpoll(int fd, uint32_t events);	// pass to private ?
         void	removeFromEpoll(int fd);				// pass to private ?
-		void 	broadcastingMessage( ClientConnection&, const std::string&, const std::string&, Channel &);
-		void	sendMessage( ClientConnection&, const std::string& );
 
         static void SignalHandler(int signum);
         class PollError : public std::exception {

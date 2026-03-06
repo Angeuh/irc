@@ -74,11 +74,14 @@ The following commands are required to properly register a client on the server:
 
 ## Instruction
 
-Make in project root, and launch server with ./ircserv <port> <password>
+Make in project root, and launch server with `./ircserv <port> <password>`
+
+`8080` can be used as port
 
 Then launch client like this :
-- for irssi : irssi -n <nickname> -c localhost -p <port> -w <password> with same port and password as the server, and a nickname of your choice
-- for netcat : nc -C localhost <port> (-C is necessary for proper RFC compliance)
+- for irssi : `irssi -n <nickname> -c localhost -p <port> -w <password>` with same port and password as the server, and a nickname of your choice
+
+- for netcat : `nc -C localhost <port>` (-C is necessary for proper RFC compliance)
 
 ## Ressources
 
