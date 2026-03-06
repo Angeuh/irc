@@ -15,11 +15,6 @@ void	Server::joinOneChannel( ClientConnection &user, std::string &channelName, s
 		std::cout << "[JOIN] Channel empty (silent error)" << std::endl;
 		return ;
 	}
-	// } else if ((channelName.length() > 199 && channelName[0] == '#') || channelName.length() > 200) {
-	// 	// sendMessage(user, RPL::errNoSuchChannel(channelName));
-	// 	std::cout << "[JOIN] Channel name too long" << std::endl;
-	// 	return ;
-	// }
 	if (channelName[0] != '#')
 		channelName = "#" + channelName;
 
@@ -211,6 +206,7 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 	}
 	std::string &nick = msg.params[0].value;
 	std::string &channelName = msg.params[1].value;
+
 	std::map<std::string, Channel>::iterator it = channels.find(channelName);
 	if (it == channels.end()) {
 		sendMessage(user, RPL::errNoSuchChannel(channelName));
@@ -218,6 +214,17 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 		return ;
 	}
 	Channel &channel = it->second;
+
+	if (channel.isOnChannel(user) == false) {
+		sendMessage(user, RPL::errUserNotInChannel(user.username, channelName));
+		std::cout << "[INVITE] User not in channel" << std::endl;
+		return ;
+	}
+	if (channel.isOperator(user) == false) {
+		sendMessage(user, RPL::errChanOpPrivsNeeded(user.username, channelName));
+		std::cout << "[INVITE] Channel operator privilege is needed" << std::endl;
+		return ;
+	}
 	ClientConnection* target = NULL;
 	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it) {
 		if (it->second.username == nick) {
@@ -226,8 +233,13 @@ void	Server::inviteCmd( Message &msg, ClientConnection &user )
 		}
 	}
 	if (!target) {
-		sendMessage(user, RPL::errUserNotInChannel(nick, channelName));
-		std::cout << "[INVITE] User not in channel" << std::endl;
+		sendMessage(user, RPL::errNoSuchNick(nick));
+		std::cout << "[INVITE] Nick not found" << std::endl;
+		return ;
+	}
+	if (channel.isOnChannel(*target)) {
+		sendMessage(user, RPL::errUserOnChannel(user.username, channelName));
+		std::cout << "[INVITE] User already in channel" << std::endl;
 		return ;
 	}
 	channel.inviteUser(*target);
@@ -458,22 +470,22 @@ void	Server::modeCmd( Message &msg, ClientConnection &user )
 
 std::string Server::generateFreeNick(const std::string &base)
 {
-    std::string nick = base;
+	std::string nick = base;
 
-    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
-        return nick;
+	if (isNicknameAvailable(this->clients, nick) == SUCCESS)
+		return nick;
 
-    nick = base + "_";
-    if (isNicknameAvailable(this->clients, nick) == SUCCESS)
-        return nick;
-    for (int i = 1; i < 1000; i++)
-    {
-        nick = base + itoa(i);
-        if (isNicknameAvailable(this->clients, nick) == SUCCESS)
-            return nick;
-    }
+	nick = base + "_";
+	if (isNicknameAvailable(this->clients, nick) == SUCCESS && nick.length() <= 9)
+		return nick;
+	for (int i = 1; i < 1000; i++)
+	{
+		nick = base + itoa(i);
+		if (isNicknameAvailable(this->clients, nick) == SUCCESS )
+			return nick;
+	}
 
-    return "";
+	return "";
 }
 
 // nick <username> / user <username> <	> <servername> <realname> / pass <password>

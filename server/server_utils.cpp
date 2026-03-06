@@ -18,7 +18,7 @@ int	isNicknameAvailable( std::map<int, ClientConnection> &clients, std::string &
 {
 	for (std::map<int, ClientConnection>::iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        if (it->second.username == nick && it->second.isRegistered == true)
+        if (it->second.username == nick)
             return (FAILURE);
     }
 	return (SUCCESS);

@@ -182,60 +182,43 @@ void Server::pingClients()
 
 void Server::run()
 {
-    const int MAX_EVENTS = 64;
-    struct epoll_event events[MAX_EVENTS];
+    const int MAX_EVENTS = 65335;
+	std::vector<struct epoll_event> events(MAX_EVENTS);
 
-    while (!Signal)
-    {
-        int n = epoll_wait(epfd, events, MAX_EVENTS, 1000);
+    while (!Signal) {
+        int n = epoll_wait(epfd, events.data(), events.size(), 1000);
 
-        if (n < 0)
-        {
+        if (n < 0) {
             if (errno == EINTR)
                 return;
             throw PollError();
         }
-        for (int i = 0; i < n; i++)
-        {
+        for (int i = 0; i < n; i++) {
             int fd = events[i].data.fd;
-            if (fd == serverSocket)
-            {
+            if (fd == serverSocket) {
                 acceptNewClient();
                 continue;
             }
-            if (events[i].events & EPOLLIN)
-            {
+            if (events[i].events & EPOLLIN) {
                 int fd_epoll = events[i].data.fd;
                 callRecv(fd_epoll);
 				std::map<int, ClientConnection>::iterator it = clients.find(fd_epoll);
 				if (it != clients.end())
 					it->second.lastActivity = time(NULL); 
             }
-            if (events[i].events & EPOLLOUT)
-            {
+            if (events[i].events & EPOLLOUT) {
                 ClientConnection &client = clients[fd];
 
-                if (!client.writeBuffer.empty())
-                {
-                    int sent = send(
-                        fd,
-                        client.writeBuffer.c_str(),
-                        client.writeBuffer.size(),
-                        0);
+                if (!client.writeBuffer.empty()) {
+                    int sent = send(fd, client.writeBuffer.c_str(), client.writeBuffer.size(), 0);
                     if (sent > 0)
                         client.writeBuffer.erase(0, sent);
-					else if (sent == -1)
-					{
-						if (errno == EAGAIN || errno == EWOULDBLOCK)
-							return;
-						else
-						{
-							std::cerr << "Send failed on fd " << fd << " errno: " << errno << std::endl;
-							removeFromEpoll(fd);
-							close(fd);
-							clients.erase(fd);
-							return;
-						}
+					else if (sent == -1) {
+						std::cerr << "Send failed on fd " << fd << " errno: " << errno << std::endl;
+						removeFromEpoll(fd);
+						close(fd);
+						clients.erase(fd);
+						return;
 					}
                     if (client.writeBuffer.empty())
                         this->modifyEpoll(fd, EPOLLIN);

@@ -50,7 +50,9 @@ class RPL
 		static std::string	errNotRegistered( const std::string &);
 		static std::string	errUserNotInChannel( const std::string &, const std::string & );
 		static std::string	errCannotSendToChan( const std::string &);
-		static std::string	errNoSuchNick( std::string &nickname );
+		static std::string	errNoSuchNick( std::string & );
+		static std::string	errUserOnChannel( std::string &, std::string & );
+
 };
 
 #endif
