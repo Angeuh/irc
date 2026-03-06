@@ -123,6 +123,14 @@ void Server::quitChannel(ClientConnection &user, const std::string &channelName,
 	broadcastingMessage(user, command, partMsg, *channel);
 
 	channel->removeUser(user);
+	if (channel->isOperator(user)) {
+		channel->removeOperator(user);
+		if (channel->operators.size() == 0 && channel->users.size() >= 1) {
+			ClientConnection	*newOp = channel->users[0];
+			std::cout << "[QUIT CHANNEL] No more operators left, adding " << newOp->username << " as operator" << std::endl;
+			channel->insertOperator(*newOp);
+		}
+	}
 	if (channel->isInvited(user))
 		channel->removeInvitation(user);
 	user.activeChannels.erase(channelName);
